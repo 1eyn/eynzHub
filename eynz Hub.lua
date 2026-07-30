@@ -1,14 +1,11 @@
 --[[
     ==================================================
-    eynz Hub - Mobile Edition (Ultimate V2.2)
-    - Settings Tab & Tab Animations
-    - Resizable UI Scaler
-    - Expandable (+) Button Smooth Animations
-    - Color Presets & Custom RGB under (+) Menu
-    - Poland Mode (White UI, Red/Thick Outlines)
-    - Custom Notification System (Destroy/Poland Mode)
-    - Draggable Floating Launcher & Main UI
-    - Safe "Destroy Hub" Feature
+    eynz Hub - Mobile Edition (Ultimate V2.4)
+    - Multilingual Support (English & Polski)
+    - Enhanced Item ESP for Interactive Parts
+    - Expanded About Section with Changelog
+    - Fixed Poland Mode Text Contrast
+    - Renames & Minor Improvements
     ==================================================
 --]]
 
@@ -19,9 +16,8 @@ local Lighting = game:GetService("Lighting")
 local TweenService = game:GetService("TweenService")
 
 local LocalPlayer = Players.LocalPlayer
-local ActiveConnections = {} -- Used for safe deletion
+local ActiveConnections = {}
 
--- UI Parent Safety Check
 local ParentGui
 pcall(function()
     if gethui then
@@ -33,11 +29,88 @@ pcall(function()
     end
 end)
 
-if ParentGui:FindFirstChild("eynzHubMobileGUI") then
-    ParentGui:FindFirstChild("eynzHubMobileGUI"):Destroy()
+if ParentGui:FindFirstChild("eynzHubMobileGUI") then ParentGui:FindFirstChild("eynzHubMobileGUI"):Destroy() end
+if ParentGui:FindFirstChild("eynzNotifications") then ParentGui:FindFirstChild("eynzNotifications"):Destroy() end
+
+----------------------------------------------------
+-- MULTILINGUAL SYSTEM
+----------------------------------------------------
+local currentLang = "EN"
+local translatables = {}
+local statefulButtons = {}
+
+local ChangelogTextEN = [[
+• English & Polish Language support
+• Added Details Button in About Section
+• Fixed Poland Mode Text Colors
+• Renamed Looping Fullbright to Fullbright
+• Renamed Directional Flight to Flight
+• Minor Improvements & Bug Fixes
+]]
+
+local ChangelogTextPL = [[
+• Wsparcie dla języka Angielskiego i Polskiego
+• Dodano przycisk Szczegóły w sekcji O Skrypcie
+• Naprawiono kolory tekstu w Trybie Polskim
+• Zmieniono nazwę Looping Fullbright na Full Jasność
+• Zmieniono nazwę Directional Flight na Lot
+• Drobne poprawki i optymalizacje
+]]
+
+local Translations = {
+    ["Features"] = {EN = "Features", PL = "Funkcje"},
+    ["Settings"] = {EN = "Settings", PL = "Ustawienia"},
+    ["Movement / Player"] = {EN = "Movement / Player", PL = "Ruch / Gracz"},
+    ["Flight"] = {EN = "Flight", PL = "Lot"},
+    ["Fly Speed"] = {EN = "Fly Speed", PL = "Szybkość Lotu"},
+    ["Enable Custom Speed"] = {EN = "Enable Custom Speed", PL = "Włącz Własną Prędkość"},
+    ["WalkSpeed Value"] = {EN = "WalkSpeed Value", PL = "Prędkość Chodzenia"},
+    ["Noclip"] = {EN = "Noclip", PL = "Przenikanie"},
+    ["Visuals / ESP"] = {EN = "Visuals / ESP", PL = "Wizualne / ESP"},
+    ["Fullbright"] = {EN = "Fullbright", PL = "Full Jasność"},
+    ["Player ESP"] = {EN = "Player ESP", PL = "ESP Graczy"},
+    ["NPC ESP"] = {EN = "NPC ESP", PL = "NPC ESP"},
+    ["Item ESP"] = {EN = "Item ESP", PL = "ESP Rzeczy"},
+    ["Show Names"] = {EN = "Show Names", PL = "Pokaż Nazwy"},
+    ["General Setup"] = {EN = "General Setup", PL = "Główne Ustawienia"},
+    ["UI Scale"] = {EN = "UI Scale", PL = "Skala UI"},
+    ["Language: English"] = {EN = "Language: English", PL = "Język: Polski"},
+    ["Color Presets & Themes"] = {EN = "Color Presets & Themes", PL = "Kolory i Motywy"},
+    ["Custom RGB"] = {EN = "Custom RGB", PL = "Własne RGB"},
+    ["Poland Mode"] = {EN = "Poland Mode", PL = "Tryb Polski"},
+    ["Danger Zone"] = {EN = "Danger Zone", PL = "Strefa Zagrożenia"},
+    ["Destroy Everything & UI"] = {EN = "Destroy Everything & UI", PL = "Usuń Skrypt i UI"},
+    ["About"] = {EN = "About", PL = "O Skrypcie"},
+    ["Details"] = {EN = "Details", PL = "Szczegóły"},
+    ["ON"] = {EN = "ON", PL = "WŁ"},
+    ["OFF"] = {EN = "OFF", PL = "WYŁ"},
+    ["Wrong Format"] = {EN = "Wrong Format", PL = "Zły Format"},
+    [" Polska Gurom! "] = {EN = " Polska Gurom! ", PL = " Polska Gurom! "},
+    ["eynz Hub successfully destroyed"] = {EN = "eynz Hub successfully destroyed", PL = "eynz Hub został pomyślnie usunięty"},
+    ["Changelog"] = {EN = ChangelogTextEN, PL = ChangelogTextPL}
+}
+
+local function getTranslation(key)
+    if Translations[key] and Translations[key][currentLang] then return Translations[key][currentLang] end
+    return key
 end
-if ParentGui:FindFirstChild("eynzNotifications") then
-    ParentGui:FindFirstChild("eynzNotifications"):Destroy()
+
+local function addTranslatable(obj, key, isSection)
+    table.insert(translatables, {obj = obj, key = key, isSection = isSection})
+    obj.Text = isSection and ("-- " .. getTranslation(key) .. " --") or getTranslation(key)
+end
+
+local function refreshTranslations()
+    for _, item in ipairs(translatables) do
+        if item.obj and item.obj.Parent then
+            item.obj.Text = item.isSection and ("-- " .. getTranslation(item.key) .. " --") or getTranslation(item.key)
+        end
+    end
+    for _, item in ipairs(statefulButtons) do
+        if item.btn and item.btn.Parent then
+            item.btn.Text = item.getState() and getTranslation("ON") or getTranslation("OFF")
+        end
+    end
 end
 
 ----------------------------------------------------
@@ -69,11 +142,9 @@ local function ShowNotification(message)
     local NoteFrame = Instance.new("Frame")
     NoteFrame.Size = UDim2.new(0, 200, 0, 40)
     NoteFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-    NoteFrame.BackgroundTransparency = 1 -- Start invisible
+    NoteFrame.BackgroundTransparency = 1 
     
-    local NoteCorner = Instance.new("UICorner")
-    NoteCorner.CornerRadius = UDim.new(0, 6)
-    NoteCorner.Parent = NoteFrame
+    local NoteCorner = Instance.new("UICorner") NoteCorner.CornerRadius = UDim.new(0, 6) NoteCorner.Parent = NoteFrame
     
     local NoteStroke = Instance.new("UIStroke")
     NoteStroke.Color = isPolandMode and Color3.fromRGB(255, 0, 0) or ThemeColor
@@ -91,31 +162,24 @@ local function ShowNotification(message)
     NoteLabel.TextTransparency = 1
     NoteLabel.Parent = NoteFrame
     
-    if isPolandMode then
-        NoteFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    end
-    
+    if isPolandMode then NoteFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255) end
     NoteFrame.Parent = NotifContainer
     
-    -- Fade In
     TweenService:Create(NoteFrame, TweenInfo.new(0.4), {BackgroundTransparency = isPolandMode and 0.1 or 0.4}):Play()
     TweenService:Create(NoteStroke, TweenInfo.new(0.4), {Transparency = 0}):Play()
     TweenService:Create(NoteLabel, TweenInfo.new(0.4), {TextTransparency = 0}):Play()
     
-    -- Wait & Fade Out
     task.delay(3.5, function()
         local outTween = TweenService:Create(NoteLabel, TweenInfo.new(0.4), {TextTransparency = 1})
         TweenService:Create(NoteStroke, TweenInfo.new(0.4), {Transparency = 1}):Play()
         TweenService:Create(NoteFrame, TweenInfo.new(0.4), {BackgroundTransparency = 1}):Play()
         outTween:Play()
-        outTween.Completed:Connect(function()
-            NoteFrame:Destroy()
-        end)
+        outTween.Completed:Connect(function() NoteFrame:Destroy() end)
     end)
 end
 
 ----------------------------------------------------
--- SAVE ORIGINAL LIGHTING SETTINGS
+-- LIGHTING BACKUP & THEME MANAGERS
 ----------------------------------------------------
 local origBrightness = Lighting.Brightness
 local origClockTime = Lighting.ClockTime
@@ -133,23 +197,22 @@ local function resetLighting()
     Lighting.OutdoorAmbient = origOutdoorAmbient
 end
 
-----------------------------------------------------
--- THEME & OUTLINE MANAGER
-----------------------------------------------------
-local ThemeStrokes = {}
-local ThemeTexts = {}
-local ThemeBackgrounds = {}
-local ThemeUpdaters = {}
+local ThemeStrokes, ThemeTexts, ThemeBackgrounds, ThemeUpdaters, ThemeFrames, ThemeSubFrames, DynamicTextElements = {}, {}, {}, {}, {}, {}, {}
 
 local function applyThemeOutline(guiObject, thickness)
     local stroke = Instance.new("UIStroke")
     stroke.Color = ThemeColor
-    stroke.Thickness = thickness or 1.5
+    stroke.Thickness = thickness or 1
     stroke:SetAttribute("OriginalThickness", stroke.Thickness)
     stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
     stroke.Parent = guiObject
     table.insert(ThemeStrokes, stroke)
     return stroke
+end
+
+local function registerDynamicText(element)
+    element:SetAttribute("OrigColor", element.TextColor3)
+    table.insert(DynamicTextElements, element)
 end
 
 ----------------------------------------------------
@@ -160,7 +223,6 @@ ScreenGui.Name = "eynzHubMobileGUI"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = ParentGui
 
--- Open/Close Floating Button for Mobile
 local ToggleBtn = Instance.new("TextButton")
 ToggleBtn.Name = "eynzToggleBtn"
 ToggleBtn.Size = UDim2.new(0, 100, 0, 35)
@@ -173,12 +235,9 @@ ToggleBtn.Font = Enum.Font.SourceSansBold
 ToggleBtn.Parent = ScreenGui
 
 local LauncherScale = Instance.new("UIScale", ToggleBtn)
-local ToggleCorner = Instance.new("UICorner")
-ToggleCorner.CornerRadius = UDim.new(0, 8)
-ToggleCorner.Parent = ToggleBtn
-applyThemeOutline(ToggleBtn, 1.5)
+local ToggleCorner = Instance.new("UICorner") ToggleCorner.CornerRadius = UDim.new(0, 8) ToggleCorner.Parent = ToggleBtn
+applyThemeOutline(ToggleBtn)
 
--- Main Frame
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
 MainFrame.Size = UDim2.new(0, 310, 0, 410)
@@ -190,22 +249,15 @@ MainFrame.Visible = true
 MainFrame.Parent = ScreenGui
 
 local MainScale = Instance.new("UIScale", MainFrame)
-local MainCorner = Instance.new("UICorner")
-MainCorner.CornerRadius = UDim.new(0, 10)
-MainCorner.Parent = MainFrame
-applyThemeOutline(MainFrame, 2)
+local MainCorner = Instance.new("UICorner") MainCorner.CornerRadius = UDim.new(0, 10) MainCorner.Parent = MainFrame
+applyThemeOutline(MainFrame)
 
--- Title Bar
 local TitleBar = Instance.new("Frame")
 TitleBar.Size = UDim2.new(1, 0, 0, 40)
 TitleBar.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
 TitleBar.Parent = MainFrame
+local TitleCorner = Instance.new("UICorner") TitleCorner.CornerRadius = UDim.new(0, 10) TitleCorner.Parent = TitleBar
 
-local TitleCorner = Instance.new("UICorner")
-TitleCorner.CornerRadius = UDim.new(0, 10)
-TitleCorner.Parent = TitleBar
-
--- Tab Bar
 local TabBar = Instance.new("Frame")
 TabBar.Size = UDim2.new(1, 0, 0, 30)
 TabBar.Position = UDim2.new(0, 0, 0, 40)
@@ -222,6 +274,7 @@ FeaturesTabBtn.Font = Enum.Font.SourceSansBold
 FeaturesTabBtn.TextSize = 14
 FeaturesTabBtn.Parent = TabBar
 table.insert(ThemeTexts, FeaturesTabBtn)
+addTranslatable(FeaturesTabBtn, "Features")
 
 local SettingsTabBtn = Instance.new("TextButton")
 SettingsTabBtn.Size = UDim2.new(0.5, 0, 1, 0)
@@ -232,12 +285,13 @@ SettingsTabBtn.TextColor3 = Color3.fromRGB(150, 150, 150)
 SettingsTabBtn.Font = Enum.Font.SourceSansBold
 SettingsTabBtn.TextSize = 14
 SettingsTabBtn.Parent = TabBar
+addTranslatable(SettingsTabBtn, "Settings")
 
 local TitleText = Instance.new("TextLabel")
 TitleText.Size = UDim2.new(1, -40, 1, 0)
 TitleText.Position = UDim2.new(0, 12, 0, 0)
 TitleText.BackgroundTransparency = 1
-TitleText.Text = "eynz Hub | Mobile"
+TitleText.Text = "eynz Hub | Mobile V2.3"
 TitleText.TextColor3 = Color3.fromRGB(255, 255, 255)
 TitleText.TextSize = 16
 TitleText.Font = Enum.Font.SourceSansBold
@@ -254,24 +308,16 @@ CloseBtn.TextSize = 16
 CloseBtn.Font = Enum.Font.SourceSansBold
 CloseBtn.Parent = TitleBar
 
-CloseBtn.MouseButton1Click:Connect(function()
-    MainFrame.Visible = false
-end)
+CloseBtn.MouseButton1Click:Connect(function() MainFrame.Visible = false end)
+ToggleBtn.MouseButton1Click:Connect(function() MainFrame.Visible = not MainFrame.Visible end)
 
-ToggleBtn.MouseButton1Click:Connect(function()
-    MainFrame.Visible = not MainFrame.Visible
-end)
-
--- Draggable Logic (Scalable)
 local function makeDraggable(frame, dragHandle, scaleObj)
     local dragging, dragStart, startPos
-
     dragHandle.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             dragging = true
             dragStart = input.Position
             startPos = frame.Position
-            
             local inputEndedConn
             inputEndedConn = input.Changed:Connect(function()
                 if input.UserInputState == Enum.UserInputState.End then
@@ -281,7 +327,6 @@ local function makeDraggable(frame, dragHandle, scaleObj)
             end)
         end
     end)
-
     table.insert(ActiveConnections, UserInputService.InputChanged:Connect(function(input)
         if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
             local delta = input.Position - dragStart
@@ -295,18 +340,24 @@ local function makeDraggable(frame, dragHandle, scaleObj)
 end
 
 makeDraggable(MainFrame, TitleBar, MainScale)
-makeDraggable(ToggleBtn, ToggleBtn, LauncherScale) -- Launcher is now draggable
+makeDraggable(ToggleBtn, ToggleBtn, LauncherScale)
 
--- SCROLL FRAMES (TABS)
 local function createScrollFrame()
     local Scroll = Instance.new("ScrollingFrame")
-    Scroll.Size = UDim2.new(1, -16, 1, -80)
-    Scroll.Position = UDim2.new(0, 8, 0, 75)
+    Scroll.Size = UDim2.new(1, 0, 1, -80)
+    Scroll.Position = UDim2.new(0, 0, 0, 75)
     Scroll.BackgroundTransparency = 1
-    Scroll.ScrollBarThickness = 4
+    Scroll.ScrollBarThickness = 3
     Scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
     Scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
     Scroll.Parent = MainFrame
+    
+    local Padding = Instance.new("UIPadding")
+    Padding.PaddingLeft = UDim.new(0, 8)
+    Padding.PaddingRight = UDim.new(0, 12)
+    Padding.PaddingTop = UDim.new(0, 2)
+    Padding.PaddingBottom = UDim.new(0, 2)
+    Padding.Parent = Scroll
 
     local UIList = Instance.new("UIListLayout")
     UIList.Padding = UDim.new(0, 8)
@@ -330,7 +381,7 @@ local function switchTab(tabName)
         TweenService:Create(currentTab, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Position = UDim2.new(1, 0, 0, 75)}):Play()
         FeaturesScroll.Position = UDim2.new(-1, 0, 0, 75)
         FeaturesScroll.Visible = true
-        TweenService:Create(FeaturesScroll, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Position = UDim2.new(0, 8, 0, 75)}):Play()
+        TweenService:Create(FeaturesScroll, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Position = UDim2.new(0, 0, 0, 75)}):Play()
         currentTab = FeaturesScroll
         
         TweenService:Create(FeaturesTabBtn, TweenInfo.new(0.2), {TextColor3 = activeCol}):Play()
@@ -339,7 +390,7 @@ local function switchTab(tabName)
         TweenService:Create(currentTab, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Position = UDim2.new(-1, 0, 0, 75)}):Play()
         SettingsScroll.Position = UDim2.new(1, 0, 0, 75)
         SettingsScroll.Visible = true
-        TweenService:Create(SettingsScroll, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Position = UDim2.new(0, 8, 0, 75)}):Play()
+        TweenService:Create(SettingsScroll, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Position = UDim2.new(0, 0, 0, 75)}):Play()
         currentTab = SettingsScroll
 
         TweenService:Create(SettingsTabBtn, TweenInfo.new(0.2), {TextColor3 = activeCol}):Play()
@@ -356,61 +407,62 @@ SettingsTabBtn.MouseButton1Click:Connect(function() switchTab("Settings") end)
 ----------------------------------------------------
 -- HELPER CREATION FUNCTIONS
 ----------------------------------------------------
-local function createSection(text, parent)
+local function createSection(textKey, parent)
     local SectionFrame = Instance.new("Frame")
-    SectionFrame.Size = UDim2.new(1, -10, 0, 25)
+    SectionFrame.Size = UDim2.new(1, 0, 0, 25)
     SectionFrame.BackgroundTransparency = 1
     SectionFrame.Parent = parent or FeaturesScroll
     
     local SectionLabel = Instance.new("TextLabel")
+    SectionLabel.Name = "SectionLabel"
     SectionLabel.Size = UDim2.new(1, 0, 1, 0)
     SectionLabel.BackgroundTransparency = 1
-    SectionLabel.Text = "-- " .. text .. " --"
     SectionLabel.TextColor3 = isPolandMode and Color3.fromRGB(255, 0, 0) or ThemeColor
     SectionLabel.TextSize = 15
     SectionLabel.Font = Enum.Font.SourceSansBold
     SectionLabel.Parent = SectionFrame
     table.insert(ThemeTexts, SectionLabel)
+    addTranslatable(SectionLabel, textKey, true)
 end
 
-local function createToggle(text, parent, defaultState, callback)
+local function createToggle(textKey, parent, defaultState, callback)
     local state = defaultState or false
 
     local ToggleFrame = Instance.new("Frame")
-    ToggleFrame.Size = UDim2.new(1, -10, 0, 40)
-    ToggleFrame.BackgroundColor3 = Color3.fromRGB(32, 32, 42)
+    ToggleFrame.Size = UDim2.new(1, 0, 0, 40)
+    ToggleFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
     ToggleFrame.Parent = parent or FeaturesScroll
+    table.insert(ThemeFrames, ToggleFrame)
 
-    local FrameCorner = Instance.new("UICorner")
-    FrameCorner.CornerRadius = UDim.new(0, 6)
-    FrameCorner.Parent = ToggleFrame
-    applyThemeOutline(ToggleFrame, 1)
+    local FrameCorner = Instance.new("UICorner") FrameCorner.CornerRadius = UDim.new(0, 6) FrameCorner.Parent = ToggleFrame
+    applyThemeOutline(ToggleFrame)
 
     local Label = Instance.new("TextLabel")
     Label.Size = UDim2.new(0.7, 0, 1, 0)
     Label.Position = UDim2.new(0, 10, 0, 0)
     Label.BackgroundTransparency = 1
-    Label.Text = text
     Label.TextColor3 = Color3.fromRGB(240, 240, 240)
     Label.TextSize = 14
     Label.Font = Enum.Font.SourceSansSemibold
     Label.TextXAlignment = Enum.TextXAlignment.Left
     Label.Parent = ToggleFrame
+    addTranslatable(Label, textKey)
+    registerDynamicText(Label)
 
     local Button = Instance.new("TextButton")
     Button.Size = UDim2.new(0, 50, 0, 24)
     Button.Position = UDim2.new(1, -60, 0.5, -12)
     Button.BackgroundColor3 = state and (isPolandMode and Color3.fromRGB(255, 0, 0) or ThemeColor) or Color3.fromRGB(60, 60, 70)
-    Button.Text = state and "ON" or "OFF"
     Button.TextColor3 = Color3.fromRGB(255, 255, 255)
     Button.Font = Enum.Font.SourceSansBold
     Button.TextSize = 12
     Button.Parent = ToggleFrame
+    
+    local BtnCorner = Instance.new("UICorner") BtnCorner.CornerRadius = UDim.new(0, 6) BtnCorner.Parent = Button
+    applyThemeOutline(Button)
 
-    local BtnCorner = Instance.new("UICorner")
-    BtnCorner.CornerRadius = UDim.new(0, 6)
-    BtnCorner.Parent = Button
-    applyThemeOutline(Button, 1)
+    Button.Text = state and getTranslation("ON") or getTranslation("OFF")
+    table.insert(statefulButtons, {btn = Button, getState = function() return state end})
 
     table.insert(ThemeUpdaters, function(newColor)
         if state then TweenService:Create(Button, TweenInfo.new(0.3), {BackgroundColor3 = newColor}):Play() end
@@ -420,36 +472,39 @@ local function createToggle(text, parent, defaultState, callback)
         state = not state
         local targetColor = state and (isPolandMode and Color3.fromRGB(255, 0, 0) or ThemeColor) or Color3.fromRGB(60, 60, 70)
         TweenService:Create(Button, TweenInfo.new(0.2), {BackgroundColor3 = targetColor}):Play()
-        Button.Text = state and "ON" or "OFF"
+        Button.Text = state and getTranslation("ON") or getTranslation("OFF")
+        
+        if isPolandMode then
+            Button.TextColor3 = state and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(255, 0, 0)
+        end
         callback(state)
     end)
 end
 
-local function createExpandableToggle(text, parent, defaultState, mainCallback, subTogglesConfig)
+local function createExpandableToggle(textKey, parent, defaultState, mainCallback, subTogglesConfig)
     local state = defaultState or false
     local expanded = false
     local subToggleFrames = {}
 
     local ToggleFrame = Instance.new("Frame")
-    ToggleFrame.Size = UDim2.new(1, -10, 0, 40)
-    ToggleFrame.BackgroundColor3 = Color3.fromRGB(32, 32, 42)
+    ToggleFrame.Size = UDim2.new(1, 0, 0, 40)
+    ToggleFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
     ToggleFrame.Parent = parent or FeaturesScroll
-    
-    local FrameCorner = Instance.new("UICorner")
-    FrameCorner.CornerRadius = UDim.new(0, 6)
-    FrameCorner.Parent = ToggleFrame
-    applyThemeOutline(ToggleFrame, 1)
+    table.insert(ThemeFrames, ToggleFrame)
+    local FrameCorner = Instance.new("UICorner") FrameCorner.CornerRadius = UDim.new(0, 6) FrameCorner.Parent = ToggleFrame
+    applyThemeOutline(ToggleFrame)
 
     local Label = Instance.new("TextLabel")
     Label.Size = UDim2.new(0.6, 0, 1, 0)
     Label.Position = UDim2.new(0, 10, 0, 0)
     Label.BackgroundTransparency = 1
-    Label.Text = text
     Label.TextColor3 = Color3.fromRGB(240, 240, 240)
     Label.TextSize = 14
     Label.Font = Enum.Font.SourceSansSemibold
     Label.TextXAlignment = Enum.TextXAlignment.Left
     Label.Parent = ToggleFrame
+    addTranslatable(Label, textKey)
+    registerDynamicText(Label)
 
     local ExpandBtn = Instance.new("TextButton")
     ExpandBtn.Size = UDim2.new(0, 24, 0, 24)
@@ -460,26 +515,23 @@ local function createExpandableToggle(text, parent, defaultState, mainCallback, 
     ExpandBtn.Font = Enum.Font.SourceSansBold
     ExpandBtn.TextSize = 16
     ExpandBtn.Parent = ToggleFrame
-    
-    local ExpCorner = Instance.new("UICorner")
-    ExpCorner.CornerRadius = UDim.new(0, 6)
-    ExpCorner.Parent = ExpandBtn
-    applyThemeOutline(ExpandBtn, 1)
+    local ExpCorner = Instance.new("UICorner") ExpCorner.CornerRadius = UDim.new(0, 6) ExpCorner.Parent = ExpandBtn
+    applyThemeOutline(ExpandBtn)
+    registerDynamicText(ExpandBtn)
 
     local Button = Instance.new("TextButton")
     Button.Size = UDim2.new(0, 50, 0, 24)
     Button.Position = UDim2.new(1, -60, 0.5, -12)
     Button.BackgroundColor3 = state and (isPolandMode and Color3.fromRGB(255, 0, 0) or ThemeColor) or Color3.fromRGB(60, 60, 70)
-    Button.Text = state and "ON" or "OFF"
     Button.TextColor3 = Color3.fromRGB(255, 255, 255)
     Button.Font = Enum.Font.SourceSansBold
     Button.TextSize = 12
     Button.Parent = ToggleFrame
+    local BtnCorner = Instance.new("UICorner") BtnCorner.CornerRadius = UDim.new(0, 6) BtnCorner.Parent = Button
+    applyThemeOutline(Button)
 
-    local BtnCorner = Instance.new("UICorner")
-    BtnCorner.CornerRadius = UDim.new(0, 6)
-    BtnCorner.Parent = Button
-    applyThemeOutline(Button, 1)
+    Button.Text = state and getTranslation("ON") or getTranslation("OFF")
+    table.insert(statefulButtons, {btn = Button, getState = function() return state end})
 
     table.insert(ThemeUpdaters, function(newColor)
         if state then TweenService:Create(Button, TweenInfo.new(0.3), {BackgroundColor3 = newColor}):Play() end
@@ -488,42 +540,40 @@ local function createExpandableToggle(text, parent, defaultState, mainCallback, 
     for _, subCfg in ipairs(subTogglesConfig) do
         local subState = false
         local SubFrame = Instance.new("Frame")
-        SubFrame.Size = UDim2.new(1, -30, 0, 0)
-        SubFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+        SubFrame.Size = UDim2.new(1, 0, 0, 0)
+        SubFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
         SubFrame.ClipsDescendants = true
         SubFrame.Visible = false
         SubFrame.Parent = parent or FeaturesScroll
-
-        local SubCorner = Instance.new("UICorner")
-        SubCorner.CornerRadius = UDim.new(0, 6)
-        SubCorner.Parent = SubFrame
-        applyThemeOutline(SubFrame, 1)
+        table.insert(ThemeSubFrames, SubFrame)
+        local SubCorner = Instance.new("UICorner") SubCorner.CornerRadius = UDim.new(0, 6) SubCorner.Parent = SubFrame
+        applyThemeOutline(SubFrame)
 
         local SubLabel = Instance.new("TextLabel")
         SubLabel.Size = UDim2.new(0.6, 0, 0, 35)
         SubLabel.Position = UDim2.new(0, 10, 0, 0)
         SubLabel.BackgroundTransparency = 1
-        SubLabel.Text = subCfg.text
         SubLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
         SubLabel.TextSize = 13
         SubLabel.Font = Enum.Font.SourceSansSemibold
         SubLabel.TextXAlignment = Enum.TextXAlignment.Left
         SubLabel.Parent = SubFrame
+        addTranslatable(SubLabel, subCfg.text)
+        registerDynamicText(SubLabel)
 
         local SubBtn = Instance.new("TextButton")
         SubBtn.Size = UDim2.new(0, 45, 0, 20)
         SubBtn.Position = UDim2.new(1, -55, 0, 7)
         SubBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
-        SubBtn.Text = "OFF"
         SubBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
         SubBtn.Font = Enum.Font.SourceSansBold
         SubBtn.TextSize = 11
         SubBtn.Parent = SubFrame
+        local SubBtnCorner = Instance.new("UICorner") SubBtnCorner.CornerRadius = UDim.new(0, 6) SubBtnCorner.Parent = SubBtn
+        applyThemeOutline(SubBtn)
 
-        local SubBtnCorner = Instance.new("UICorner")
-        SubBtnCorner.CornerRadius = UDim.new(0, 6)
-        SubBtnCorner.Parent = SubBtn
-        applyThemeOutline(SubBtn, 1)
+        SubBtn.Text = subState and getTranslation("ON") or getTranslation("OFF")
+        table.insert(statefulButtons, {btn = SubBtn, getState = function() return subState end})
 
         table.insert(ThemeUpdaters, function(newColor)
             if subState then TweenService:Create(SubBtn, TweenInfo.new(0.3), {BackgroundColor3 = newColor}):Play() end
@@ -533,7 +583,8 @@ local function createExpandableToggle(text, parent, defaultState, mainCallback, 
             subState = not subState
             local targetColor = subState and (isPolandMode and Color3.fromRGB(255, 0, 0) or ThemeColor) or Color3.fromRGB(60, 60, 70)
             TweenService:Create(SubBtn, TweenInfo.new(0.2), {BackgroundColor3 = targetColor}):Play()
-            SubBtn.Text = subState and "ON" or "OFF"
+            SubBtn.Text = subState and getTranslation("ON") or getTranslation("OFF")
+            if isPolandMode then SubBtn.TextColor3 = subState and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(255, 0, 0) end
             subCfg.callback(subState)
         end)
         table.insert(subToggleFrames, SubFrame)
@@ -543,7 +594,8 @@ local function createExpandableToggle(text, parent, defaultState, mainCallback, 
         state = not state
         local targetColor = state and (isPolandMode and Color3.fromRGB(255, 0, 0) or ThemeColor) or Color3.fromRGB(60, 60, 70)
         TweenService:Create(Button, TweenInfo.new(0.2), {BackgroundColor3 = targetColor}):Play()
-        Button.Text = state and "ON" or "OFF"
+        Button.Text = state and getTranslation("ON") or getTranslation("OFF")
+        if isPolandMode then Button.TextColor3 = state and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(255, 0, 0) end
         mainCallback(state)
     end)
 
@@ -555,9 +607,9 @@ local function createExpandableToggle(text, parent, defaultState, mainCallback, 
         for _, frm in ipairs(subToggleFrames) do
             if expanded then
                 frm.Visible = true
-                TweenService:Create(frm, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = UDim2.new(1, -30, 0, 35)}):Play()
+                TweenService:Create(frm, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = UDim2.new(1, 0, 0, 35)}):Play()
             else
-                local tw = TweenService:Create(frm, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = UDim2.new(1, -30, 0, 0)})
+                local tw = TweenService:Create(frm, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = UDim2.new(1, 0, 0, 0)})
                 tw:Play()
                 task.delay(0.25, function() if not expanded then frm.Visible = false end end)
             end
@@ -567,22 +619,24 @@ end
 
 local function createSlider(labelText, parent, min, max, defaultVal, callback)
     local RowFrame = Instance.new("Frame")
-    RowFrame.Size = UDim2.new(1, -10, 0, 50)
-    RowFrame.BackgroundColor3 = Color3.fromRGB(32, 32, 42)
+    RowFrame.Size = UDim2.new(1, 0, 0, 50)
+    RowFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
     RowFrame.Parent = parent or FeaturesScroll
-    applyThemeOutline(RowFrame, 1)
+    table.insert(ThemeFrames, RowFrame)
+    applyThemeOutline(RowFrame)
     local FrameCorner = Instance.new("UICorner") FrameCorner.CornerRadius = UDim.new(0, 6) FrameCorner.Parent = RowFrame
 
     local Label = Instance.new("TextLabel")
     Label.Size = UDim2.new(0.5, 0, 0, 20)
     Label.Position = UDim2.new(0, 10, 0, 5)
     Label.BackgroundTransparency = 1
-    Label.Text = labelText
     Label.TextColor3 = Color3.fromRGB(240, 240, 240)
     Label.TextSize = 14
     Label.Font = Enum.Font.SourceSansSemibold
     Label.TextXAlignment = Enum.TextXAlignment.Left
     Label.Parent = RowFrame
+    addTranslatable(Label, labelText)
+    registerDynamicText(Label)
 
     local ValueLabel = Instance.new("TextLabel")
     ValueLabel.Size = UDim2.new(0.5, 0, 0, 20)
@@ -594,6 +648,7 @@ local function createSlider(labelText, parent, min, max, defaultVal, callback)
     ValueLabel.Font = Enum.Font.SourceSansBold
     ValueLabel.TextXAlignment = Enum.TextXAlignment.Right
     ValueLabel.Parent = RowFrame
+    registerDynamicText(ValueLabel)
 
     local SliderBg = Instance.new("Frame")
     SliderBg.Size = UDim2.new(1, -20, 0, 8)
@@ -633,7 +688,6 @@ local function createSlider(labelText, parent, min, max, defaultVal, callback)
             local sliderX = SliderBg.AbsolutePosition.X
             local sliderW = SliderBg.AbsoluteSize.X
             local mouseX = input.Position.X
-            
             local percent = math.clamp((mouseX - sliderX) / sliderW, 0, 1)
             local val = min + (max - min) * percent
             val = math.floor(val * 100) / 100
@@ -645,25 +699,25 @@ local function createSlider(labelText, parent, min, max, defaultVal, callback)
     end))
 end
 
-local function createButton(text, parent, callback, colorTheme)
+local function createButton(textKey, parent, callback, colorTheme)
     local BtnFrame = Instance.new("Frame")
-    BtnFrame.Size = UDim2.new(1, -10, 0, 35)
+    BtnFrame.Size = UDim2.new(1, 0, 0, 35)
     BtnFrame.BackgroundTransparency = 1
     BtnFrame.Parent = parent or FeaturesScroll
 
     local Btn = Instance.new("TextButton")
     Btn.Size = UDim2.new(1, 0, 1, 0)
-    Btn.BackgroundColor3 = colorTheme or Color3.fromRGB(32, 32, 42)
-    Btn.Text = text
+    Btn.BackgroundColor3 = colorTheme or Color3.fromRGB(45, 45, 55)
+    if not colorTheme then table.insert(ThemeFrames, Btn) end
     Btn.TextColor3 = Color3.fromRGB(255, 255, 255)
     Btn.Font = Enum.Font.SourceSansBold
     Btn.TextSize = 14
     Btn.Parent = BtnFrame
-    
-    local BtnCorner = Instance.new("UICorner")
-    BtnCorner.CornerRadius = UDim.new(0, 6)
-    BtnCorner.Parent = Btn
-    applyThemeOutline(Btn, 1)
+    local BtnCorner = Instance.new("UICorner") BtnCorner.CornerRadius = UDim.new(0, 6) BtnCorner.Parent = Btn
+    applyThemeOutline(Btn)
+
+    addTranslatable(Btn, textKey)
+    if not colorTheme then registerDynamicText(Btn) end
 
     Btn.MouseButton1Click:Connect(callback)
 end
@@ -685,6 +739,12 @@ local function setPolandMode(state)
             stroke.Thickness = 3
             stroke.Color = Color3.fromRGB(255, 0, 0)
         end
+        for _, frm in ipairs(ThemeFrames) do
+            if frm and frm.Parent then frm.BackgroundColor3 = Color3.fromRGB(240, 240, 240) end
+        end
+        for _, frm in ipairs(ThemeSubFrames) do
+            if frm and frm.Parent then frm.BackgroundColor3 = Color3.fromRGB(220, 220, 220) end
+        end
         for _, txt in ipairs(ThemeTexts) do
             if txt and txt.Parent and txt.Name ~= "eynzToggleBtn" and txt.Name ~= "TitleText" then 
                 txt.TextColor3 = Color3.fromRGB(255, 0, 0) 
@@ -693,9 +753,15 @@ local function setPolandMode(state)
         for _, bg in ipairs(ThemeBackgrounds) do
             if bg and bg.Parent then bg.BackgroundColor3 = Color3.fromRGB(255, 0, 0) end
         end
-        for _, func in ipairs(ThemeUpdaters) do
-            func(Color3.fromRGB(255, 0, 0))
+        for _, v in ipairs(DynamicTextElements) do
+            if v and v.Parent then v.TextColor3 = Color3.fromRGB(255, 0, 0) end
         end
+        for _, item in ipairs(statefulButtons) do
+            if item.btn and item.btn.Parent then
+                item.btn.TextColor3 = item.getState() and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(255, 0, 0)
+            end
+        end
+        for _, func in ipairs(ThemeUpdaters) do func(Color3.fromRGB(255, 0, 0)) end
     else
         MainFrame.BackgroundColor3 = Color3.fromRGB(22, 22, 28)
         TitleBar.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
@@ -707,8 +773,14 @@ local function setPolandMode(state)
         SettingsTabBtn.TextColor3 = currentTab == SettingsScroll and ThemeColor or Color3.fromRGB(150, 150, 150)
         
         for _, stroke in ipairs(ThemeStrokes) do
-            stroke.Thickness = stroke:GetAttribute("OriginalThickness") or 1.5
+            stroke.Thickness = stroke:GetAttribute("OriginalThickness") or 1
             stroke.Color = ThemeColor
+        end
+        for _, frm in ipairs(ThemeFrames) do
+            if frm and frm.Parent then frm.BackgroundColor3 = Color3.fromRGB(45, 45, 55) end
+        end
+        for _, frm in ipairs(ThemeSubFrames) do
+            if frm and frm.Parent then frm.BackgroundColor3 = Color3.fromRGB(35, 35, 45) end
         end
         for _, txt in ipairs(ThemeTexts) do
             if txt and txt.Parent and txt.Name ~= "eynzToggleBtn" and txt.Name ~= "TitleText" then 
@@ -718,17 +790,22 @@ local function setPolandMode(state)
         for _, bg in ipairs(ThemeBackgrounds) do
             if bg and bg.Parent then bg.BackgroundColor3 = ThemeColor end
         end
-        for _, func in ipairs(ThemeUpdaters) do
-            func(ThemeColor)
+        for _, v in ipairs(DynamicTextElements) do
+            if v and v.Parent then
+                local orig = v:GetAttribute("OrigColor")
+                if orig then v.TextColor3 = orig end
+            end
         end
+        for _, item in ipairs(statefulButtons) do
+            if item.btn and item.btn.Parent then item.btn.TextColor3 = Color3.fromRGB(255, 255, 255) end
+        end
+        for _, func in ipairs(ThemeUpdaters) do func(ThemeColor) end
     end
 end
 
 local function updateThemeColor(color)
     ThemeColor = color
-    if isPolandMode then 
-        setPolandMode(false) 
-    end
+    if isPolandMode then setPolandMode(false) end
     
     for _, stroke in ipairs(ThemeStrokes) do
         if stroke and stroke.Parent then TweenService:Create(stroke, TweenInfo.new(0.3), {Color = color}):Play() end
@@ -741,31 +818,31 @@ local function updateThemeColor(color)
     for _, bg in ipairs(ThemeBackgrounds) do
         if bg and bg.Parent then TweenService:Create(bg, TweenInfo.new(0.3), {BackgroundColor3 = color}):Play() end
     end
-    for _, func in ipairs(ThemeUpdaters) do
-        func(color)
-    end
+    for _, func in ipairs(ThemeUpdaters) do func(color) end
 end
 
 local function createColorPresetsRow(parent)
     local expanded = false
     
     local RowFrame = Instance.new("Frame")
-    RowFrame.Size = UDim2.new(1, -10, 0, 40)
-    RowFrame.BackgroundColor3 = Color3.fromRGB(32, 32, 42)
+    RowFrame.Size = UDim2.new(1, 0, 0, 40)
+    RowFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
     RowFrame.Parent = parent
-    applyThemeOutline(RowFrame, 1)
+    table.insert(ThemeFrames, RowFrame)
+    applyThemeOutline(RowFrame)
     local FrameCorner = Instance.new("UICorner") FrameCorner.CornerRadius = UDim.new(0, 6) FrameCorner.Parent = RowFrame
     
     local Label = Instance.new("TextLabel")
     Label.Size = UDim2.new(0.6, 0, 1, 0)
     Label.Position = UDim2.new(0, 10, 0, 0)
     Label.BackgroundTransparency = 1
-    Label.Text = "Color Presets & Themes"
     Label.TextColor3 = Color3.fromRGB(240, 240, 240)
     Label.TextSize = 14
     Label.Font = Enum.Font.SourceSansSemibold
     Label.TextXAlignment = Enum.TextXAlignment.Left
     Label.Parent = RowFrame
+    addTranslatable(Label, "Color Presets & Themes")
+    registerDynamicText(Label)
 
     local ExpandBtn = Instance.new("TextButton")
     ExpandBtn.Size = UDim2.new(0, 24, 0, 24)
@@ -777,16 +854,18 @@ local function createColorPresetsRow(parent)
     ExpandBtn.TextSize = 16
     ExpandBtn.Parent = RowFrame
     local ExpCorner = Instance.new("UICorner") ExpCorner.CornerRadius = UDim.new(0, 6) ExpCorner.Parent = ExpandBtn
-    applyThemeOutline(ExpandBtn, 1)
+    applyThemeOutline(ExpandBtn)
+    registerDynamicText(ExpandBtn)
 
     local SubContainer = Instance.new("Frame")
-    SubContainer.Size = UDim2.new(1, -30, 0, 0)
-    SubContainer.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+    SubContainer.Size = UDim2.new(1, 0, 0, 0)
+    SubContainer.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
     SubContainer.ClipsDescendants = true
     SubContainer.Visible = false
     SubContainer.Parent = parent
+    table.insert(ThemeSubFrames, SubContainer)
     local SubCorner = Instance.new("UICorner") SubCorner.CornerRadius = UDim.new(0, 6) SubCorner.Parent = SubContainer
-    applyThemeOutline(SubContainer, 1)
+    applyThemeOutline(SubContainer)
     
     local SubList = Instance.new("UIListLayout")
     SubList.Padding = UDim.new(0, 6)
@@ -794,12 +873,12 @@ local function createColorPresetsRow(parent)
     SubList.SortOrder = Enum.SortOrder.LayoutOrder
     SubList.Parent = SubContainer
     
-    local SubPad = Instance.new("UIPadding")
-    SubPad.PaddingTop = UDim.new(0, 6)
-    SubPad.PaddingBottom = UDim.new(0, 6)
-    SubPad.Parent = SubContainer
+    local SubPad = Instance.new("UIPadding") SubPad.PaddingTop = UDim.new(0, 6) SubPad.PaddingBottom = UDim.new(0, 6) SubPad.Parent = SubContainer
 
     local colors = {
+        {name = "Purple (Default)", rgb = Color3.fromRGB(138, 43, 226)},
+        {name = "Orange", rgb = Color3.fromRGB(255, 128, 0)},
+        {name = "Brown", rgb = Color3.fromRGB(139, 69, 19)},
         {name = "Yellow", rgb = Color3.fromRGB(255, 255, 0)},
         {name = "Blue", rgb = Color3.fromRGB(0, 100, 255)},
         {name = "Red", rgb = Color3.fromRGB(255, 50, 50)},
@@ -817,20 +896,19 @@ local function createColorPresetsRow(parent)
         Btn.TextSize = 13
         Btn.Parent = SubContainer
         local BtnCorner = Instance.new("UICorner") BtnCorner.CornerRadius = UDim.new(0, 6) BtnCorner.Parent = Btn
-        applyThemeOutline(Btn, 1)
-        
+        applyThemeOutline(Btn)
         Btn.MouseButton1Click:Connect(function() updateThemeColor(clr.rgb) end)
     end
     
     local PolandBtn = Instance.new("TextButton")
     PolandBtn.Size = UDim2.new(1, -12, 0, 26)
     PolandBtn.BackgroundColor3 = Color3.fromRGB(220, 220, 220)
-    PolandBtn.Text = "Poland Mode"
     PolandBtn.TextColor3 = Color3.fromRGB(255, 0, 0)
     PolandBtn.Font = Enum.Font.SourceSansBold
     PolandBtn.TextSize = 13
     PolandBtn.Parent = SubContainer
     local PolCorner = Instance.new("UICorner") PolCorner.CornerRadius = UDim.new(0, 6) PolCorner.Parent = PolandBtn
+    addTranslatable(PolandBtn, "Poland Mode")
     
     local polStroke = Instance.new("UIStroke")
     polStroke.Color = Color3.fromRGB(255, 0, 0)
@@ -840,26 +918,28 @@ local function createColorPresetsRow(parent)
     
     PolandBtn.MouseButton1Click:Connect(function()
         setPolandMode(true)
-        ShowNotification(" Polska Gurom! ")
+        ShowNotification(getTranslation(" Polska Gurom! "))
     end)
     
     local CustomRGBRow = Instance.new("Frame")
     CustomRGBRow.Size = UDim2.new(1, -12, 0, 30)
-    CustomRGBRow.BackgroundColor3 = Color3.fromRGB(32, 32, 42)
+    CustomRGBRow.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
     CustomRGBRow.Parent = SubContainer
+    table.insert(ThemeFrames, CustomRGBRow)
     local CRGBCorner = Instance.new("UICorner") CRGBCorner.CornerRadius = UDim.new(0, 6) CRGBCorner.Parent = CustomRGBRow
-    applyThemeOutline(CustomRGBRow, 1)
+    applyThemeOutline(CustomRGBRow)
     
     local CLabel = Instance.new("TextLabel")
     CLabel.Size = UDim2.new(0.4, 0, 1, 0)
     CLabel.Position = UDim2.new(0, 10, 0, 0)
     CLabel.BackgroundTransparency = 1
-    CLabel.Text = "Custom RGB"
     CLabel.TextColor3 = Color3.fromRGB(240, 240, 240)
     CLabel.TextSize = 13
     CLabel.Font = Enum.Font.SourceSansSemibold
     CLabel.TextXAlignment = Enum.TextXAlignment.Left
     CLabel.Parent = CustomRGBRow
+    addTranslatable(CLabel, "Custom RGB")
+    registerDynamicText(CLabel)
     
     local InputBox = Instance.new("TextBox")
     InputBox.Size = UDim2.new(0, 90, 0, 22)
@@ -871,12 +951,15 @@ local function createColorPresetsRow(parent)
     InputBox.TextSize = 12
     InputBox.Parent = CustomRGBRow
     local BoxCorner = Instance.new("UICorner") BoxCorner.CornerRadius = UDim.new(0, 6) BoxCorner.Parent = InputBox
-    applyThemeOutline(InputBox, 1)
+    applyThemeOutline(InputBox)
+    registerDynamicText(InputBox)
     
     InputBox.FocusLost:Connect(function()
         local r, g, b = InputBox.Text:match("(%d+)%s*,%s*(%d+)%s*,%s*(%d+)")
         if r and g and b then
             updateThemeColor(Color3.fromRGB(tonumber(r), tonumber(g), tonumber(b)))
+        else
+            ShowNotification(getTranslation("Wrong Format"))
         end
     end)
     
@@ -888,9 +971,9 @@ local function createColorPresetsRow(parent)
         if expanded then
             SubContainer.Visible = true
             local contentHeight = SubList.AbsoluteContentSize.Y + 12
-            TweenService:Create(SubContainer, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = UDim2.new(1, -30, 0, contentHeight)}):Play()
+            TweenService:Create(SubContainer, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = UDim2.new(1, 0, 0, contentHeight)}):Play()
         else
-            local tw = TweenService:Create(SubContainer, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = UDim2.new(1, -30, 0, 0)})
+            local tw = TweenService:Create(SubContainer, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = UDim2.new(1, 0, 0, 0)})
             tw:Play()
             task.delay(0.3, function() if not expanded then SubContainer.Visible = false end end)
         end
@@ -899,25 +982,25 @@ end
 
 local function createInputRow(labelText, parent, defaultVal, callback)
     local RowFrame = Instance.new("Frame")
-    RowFrame.Size = UDim2.new(1, -10, 0, 40)
-    RowFrame.BackgroundColor3 = Color3.fromRGB(32, 32, 42)
+    RowFrame.Size = UDim2.new(1, 0, 0, 40)
+    RowFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
     RowFrame.Parent = parent or FeaturesScroll
+    table.insert(ThemeFrames, RowFrame)
 
-    local FrameCorner = Instance.new("UICorner")
-    FrameCorner.CornerRadius = UDim.new(0, 6)
-    FrameCorner.Parent = RowFrame
-    applyThemeOutline(RowFrame, 1)
+    local FrameCorner = Instance.new("UICorner") FrameCorner.CornerRadius = UDim.new(0, 6) FrameCorner.Parent = RowFrame
+    applyThemeOutline(RowFrame)
 
     local Label = Instance.new("TextLabel")
     Label.Size = UDim2.new(0.5, 0, 1, 0)
     Label.Position = UDim2.new(0, 10, 0, 0)
     Label.BackgroundTransparency = 1
-    Label.Text = labelText
     Label.TextColor3 = Color3.fromRGB(240, 240, 240)
     Label.TextSize = 14
     Label.Font = Enum.Font.SourceSansSemibold
     Label.TextXAlignment = Enum.TextXAlignment.Left
     Label.Parent = RowFrame
+    addTranslatable(Label, labelText)
+    registerDynamicText(Label)
 
     local InputBox = Instance.new("TextBox")
     InputBox.Size = UDim2.new(0, 100, 0, 26)
@@ -928,14 +1011,118 @@ local function createInputRow(labelText, parent, defaultVal, callback)
     InputBox.Font = Enum.Font.SourceSansBold
     InputBox.TextSize = 13
     InputBox.Parent = RowFrame
+    local BoxCorner = Instance.new("UICorner") BoxCorner.CornerRadius = UDim.new(0, 6) BoxCorner.Parent = InputBox
+    applyThemeOutline(InputBox)
+    registerDynamicText(InputBox)
 
-    local BoxCorner = Instance.new("UICorner")
-    BoxCorner.CornerRadius = UDim.new(0, 6)
-    BoxCorner.Parent = InputBox
-    applyThemeOutline(InputBox, 1)
+    InputBox.FocusLost:Connect(function() callback(InputBox.Text) end)
+end
 
-    InputBox.FocusLost:Connect(function()
-        callback(InputBox.Text)
+local function createAboutCard(parent)
+    local Card = Instance.new("Frame")
+    Card.Size = UDim2.new(1, 0, 0, 60)
+    Card.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+    Card.Parent = parent
+    table.insert(ThemeFrames, Card)
+    applyThemeOutline(Card)
+    local CardCorner = Instance.new("UICorner") CardCorner.CornerRadius = UDim.new(0, 6) CardCorner.Parent = Card
+    
+    local Lbl1 = Instance.new("TextLabel")
+    Lbl1.Size = UDim2.new(1, 0, 0, 30)
+    Lbl1.BackgroundTransparency = 1
+    Lbl1.Text = "Made by 1eyn"
+    Lbl1.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Lbl1.Font = Enum.Font.SourceSansBold
+    Lbl1.TextSize = 16
+    Lbl1.Parent = Card
+    registerDynamicText(Lbl1)
+    
+    local Lbl2 = Instance.new("TextLabel")
+    Lbl2.Size = UDim2.new(1, 0, 0, 30)
+    Lbl2.Position = UDim2.new(0, 0, 0, 25)
+    Lbl2.BackgroundTransparency = 1
+    Lbl2.Text = "Version 2.3"
+    Lbl2.TextColor3 = Color3.fromRGB(200, 200, 200)
+    Lbl2.Font = Enum.Font.SourceSansSemibold
+    Lbl2.TextSize = 14
+    Lbl2.Parent = Card
+    registerDynamicText(Lbl2)
+end
+
+local function createDetailsExpandable(parent)
+    local expanded = false
+    
+    local RowFrame = Instance.new("Frame")
+    RowFrame.Size = UDim2.new(1, 0, 0, 40)
+    RowFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+    RowFrame.Parent = parent
+    table.insert(ThemeFrames, RowFrame)
+    applyThemeOutline(RowFrame)
+    local FrameCorner = Instance.new("UICorner") FrameCorner.CornerRadius = UDim.new(0, 6) FrameCorner.Parent = RowFrame
+    
+    local Label = Instance.new("TextLabel")
+    Label.Size = UDim2.new(0.8, 0, 1, 0)
+    Label.Position = UDim2.new(0, 10, 0, 0)
+    Label.BackgroundTransparency = 1
+    Label.TextColor3 = Color3.fromRGB(240, 240, 240)
+    Label.TextSize = 14
+    Label.Font = Enum.Font.SourceSansSemibold
+    Label.TextXAlignment = Enum.TextXAlignment.Left
+    Label.Parent = RowFrame
+    addTranslatable(Label, "Details")
+    registerDynamicText(Label)
+
+    local ExpandBtn = Instance.new("TextButton")
+    ExpandBtn.Size = UDim2.new(0, 24, 0, 24)
+    ExpandBtn.Position = UDim2.new(1, -34, 0.5, -12)
+    ExpandBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+    ExpandBtn.Text = "+"
+    ExpandBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    ExpandBtn.Font = Enum.Font.SourceSansBold
+    ExpandBtn.TextSize = 16
+    ExpandBtn.Parent = RowFrame
+    local ExpCorner = Instance.new("UICorner") ExpCorner.CornerRadius = UDim.new(0, 6) ExpCorner.Parent = ExpandBtn
+    applyThemeOutline(ExpandBtn)
+    registerDynamicText(ExpandBtn)
+
+    local SubContainer = Instance.new("Frame")
+    SubContainer.Size = UDim2.new(1, 0, 0, 0)
+    SubContainer.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+    SubContainer.ClipsDescendants = true
+    SubContainer.Visible = false
+    SubContainer.Parent = parent
+    table.insert(ThemeSubFrames, SubContainer)
+    local SubCorner = Instance.new("UICorner") SubCorner.CornerRadius = UDim.new(0, 6) SubCorner.Parent = SubContainer
+    applyThemeOutline(SubContainer)
+    
+    local TextCont = Instance.new("TextLabel")
+    TextCont.Size = UDim2.new(1, -20, 1, -10)
+    TextCont.Position = UDim2.new(0, 10, 0, 5)
+    TextCont.BackgroundTransparency = 1
+    TextCont.TextColor3 = Color3.fromRGB(200, 200, 200)
+    TextCont.TextSize = 12
+    TextCont.Font = Enum.Font.SourceSans
+    TextCont.TextXAlignment = Enum.TextXAlignment.Left
+    TextCont.TextYAlignment = Enum.TextYAlignment.Top
+    TextCont.TextWrapped = true
+    TextCont.Parent = SubContainer
+    addTranslatable(TextCont, "Changelog")
+    registerDynamicText(TextCont)
+    
+    ExpandBtn.MouseButton1Click:Connect(function()
+        expanded = not expanded
+        local targetRotation = expanded and 45 or 0
+        TweenService:Create(ExpandBtn, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Rotation = targetRotation}):Play()
+
+        if expanded then
+            SubContainer.Visible = true
+            local contentHeight = 110
+            TweenService:Create(SubContainer, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = UDim2.new(1, 0, 0, contentHeight)}):Play()
+        else
+            local tw = TweenService:Create(SubContainer, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = UDim2.new(1, 0, 0, 0)})
+            tw:Play()
+            task.delay(0.3, function() if not expanded then SubContainer.Visible = false end end)
+        end
     end)
 end
 
@@ -957,7 +1144,7 @@ local function disableFly()
     end
 end
 
-createToggle("Directional Flight", FeaturesScroll, false, function(state)
+createToggle("Flight", FeaturesScroll, false, function(state)
     flyEnabled = state
     if not flyEnabled then disableFly() end
 end)
@@ -982,7 +1169,6 @@ table.insert(ActiveConnections, RunService.RenderStepped:Connect(function()
             flyBv.Velocity = Vector3.new(0, 0, 0)
             flyBv.Parent = root
         end
-
         if not flyBg or flyBg.Parent ~= root then
             flyBg = Instance.new("BodyGyro")
             flyBg.MaxTorque = Vector3.new(1e9, 1e9, 1e9)
@@ -1064,7 +1250,7 @@ end))
 createSection("Visuals / ESP", FeaturesScroll)
 
 local fullbrightEnabled = false
-createToggle("Looping Fullbright", FeaturesScroll, false, function(state)
+createToggle("Fullbright", FeaturesScroll, false, function(state)
     fullbrightEnabled = state
     if not fullbrightEnabled then resetLighting() end
 end)
@@ -1112,6 +1298,12 @@ local function applyPlayerESP(player)
     if not playerESPData[player] then playerESPData[player] = {} end
     local data = playerESPData[player]
     local char = player.Character
+
+    if data.Char ~= char then
+        if data.Highlight then data.Highlight:Destroy(); data.Highlight = nil end
+        if data.NameTag then data.NameTag:Destroy(); data.NameTag = nil end
+        data.Char = char
+    end
 
     if playerEspEnabled and char then
         if not data.Highlight then
@@ -1226,32 +1418,69 @@ createExpandableToggle("NPC ESP", FeaturesScroll, false, function(state)
     end
 end, {{ text = "Show Names", callback = function(state) npcNamesEnabled = state refreshAllNPCsESP() end }})
 
--- ITEM ESP
-local function isItem(obj) return obj:IsA("Tool") and obj.Parent and not Players:GetPlayerFromCharacter(obj.Parent) end
-local function applyItemVisuals(item)
-    if not activeItems[item] then activeItems[item] = {} end
-    local data = activeItems[item]
-    if itemEspEnabled then
-        if not data.Highlight then
-            local hl = Instance.new("Highlight", item)
-            hl.FillColor = Color3.fromRGB(255, 215, 0); hl.FillTransparency = 0.5; hl.OutlineColor = Color3.new(1,1,1); hl.Adornee = item
-            data.Highlight = hl
-        end
-        if itemNamesEnabled and not data.NameTag then
-            local adornee = item.PrimaryPart or item:FindFirstChildWhichIsA("BasePart")
-            if adornee then
-                local bg = createNameTag(item.Name, Color3.fromRGB(255, 215, 0)); bg.Adornee = adornee; bg.Parent = item
-                data.NameTag = bg
+-- Enhanced ITEM ESP
+local function isItem(obj)
+    -- Default dropped tools
+    if obj:IsA("Tool") and obj.Parent and not Players:GetPlayerFromCharacter(obj.Parent) then 
+        return true 
+    end
+    
+    -- Loose interactable meshes or parts (useful for games like Camping)
+    if (obj:IsA("Model") or obj:IsA("BasePart")) and not Players:GetPlayerFromCharacter(obj) then
+        if obj:FindFirstChildOfClass("ClickDetector") or obj:FindFirstChildOfClass("ProximityPrompt") then
+            -- Avoid highlighting massive structures or accidental characters
+            if not obj:FindFirstChildOfClass("Humanoid") and not (obj.Parent and obj.Parent:FindFirstChildOfClass("Humanoid")) then
+                if obj:IsA("BasePart") and obj.Size.Magnitude < 30 then
+                    return true
+                elseif obj:IsA("Model") then
+                    return true
+                end
             end
         end
     end
-    if not itemEspEnabled then
+    return false
+end
+
+local function applyItemVisuals(item)
+    if not activeItems[item] then activeItems[item] = {} end
+    local data = activeItems[item]
+    
+    local adornee = item
+    if item:IsA("Tool") then
+        adornee = item:FindFirstChildWhichIsA("BasePart") or item.PrimaryPart or item
+    end
+    
+    if itemEspEnabled and adornee then
+        if not data.Highlight then
+            local hl = Instance.new("Highlight")
+            hl.FillColor = Color3.fromRGB(255, 215, 0)
+            hl.FillTransparency = 0.5
+            hl.OutlineColor = Color3.new(1,1,1)
+            hl.Adornee = item
+            hl.Parent = item
+            data.Highlight = hl
+        end
+        if itemNamesEnabled and not data.NameTag then
+            -- Nametag needs a BasePart to attach reliably
+            local tagAdornee = adornee
+            if tagAdornee:IsA("Model") and not tagAdornee.PrimaryPart then
+                tagAdornee = tagAdornee:FindFirstChildWhichIsA("BasePart") or tagAdornee
+            end
+            
+            local bg = createNameTag(item.Name, Color3.fromRGB(255, 215, 0))
+            bg.Adornee = tagAdornee
+            bg.Parent = tagAdornee
+            data.NameTag = bg
+        end
+    end
+    if not itemEspEnabled or not adornee then
         if data.Highlight then data.Highlight:Destroy(); data.Highlight = nil end
         if data.NameTag then data.NameTag:Destroy(); data.NameTag = nil end
     else
         if not itemNamesEnabled and data.NameTag then data.NameTag:Destroy(); data.NameTag = nil end
     end
 end
+
 local function refreshAllItemsESP() for item, _ in pairs(activeItems) do applyItemVisuals(item) end end
 
 createExpandableToggle("Item ESP", FeaturesScroll, false, function(state)
@@ -1262,7 +1491,8 @@ createExpandableToggle("Item ESP", FeaturesScroll, false, function(state)
         end
         itemDescendantConn = workspace.DescendantAdded:Connect(function(obj)
             task.wait(0.1)
-            if isItem(obj) then activeItems[obj] = {}; applyItemVisuals(obj) end
+            if isItem(obj) then activeItems[obj] = {}; applyItemVisuals(obj)
+            elseif obj.Parent and isItem(obj.Parent) then activeItems[obj.Parent] = {}; applyItemVisuals(obj.Parent) end
         end)
         table.insert(ActiveConnections, itemDescendantConn)
         itemCleanLoop = task.spawn(function()
@@ -1293,12 +1523,15 @@ createSlider("UI Scale", SettingsScroll, 0.5, 1.5, 1.0, function(val)
     TweenService:Create(LauncherScale, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Scale = val}):Play()
 end)
 
--- The Color Presets + RGB Selector replaced the standard input row
 createColorPresetsRow(SettingsScroll)
+
+createButton("Language: English", SettingsScroll, function()
+    currentLang = currentLang == "EN" and "PL" or "EN"
+    refreshTranslations()
+end)
 
 createSection("Danger Zone", SettingsScroll)
 
--- Global Destruction Logic
 local function DestroyHub()
     flyEnabled = false; disableFly()
     speedEnabled = false
@@ -1318,20 +1551,21 @@ local function DestroyHub()
     itemEspEnabled = false; refreshAllItemsESP()
 
     for _, connection in ipairs(ActiveConnections) do
-        if connection and connection.Disconnect then
-            connection:Disconnect()
-        end
+        if connection and connection.Disconnect then connection:Disconnect() end
     end
 
     if npcCleanLoop then task.cancel(npcCleanLoop) end
     if itemCleanLoop then task.cancel(itemCleanLoop) end
 
     if ScreenGui then ScreenGui:Destroy() end
-    
-    -- Using the distinct Notification Gui to send our destroy message safely
-    ShowNotification("eynz Hub successfully destroyed")
+    ShowNotification(getTranslation("eynz Hub successfully destroyed"))
 end
 
-createButton("Destroy Everything & UI", SettingsScroll, function()
-    DestroyHub()
-end, Color3.fromRGB(180, 40, 40))
+createButton("Destroy Everything & UI", SettingsScroll, function() DestroyHub() end, Color3.fromRGB(180, 40, 40))
+
+createSection("About", SettingsScroll)
+createAboutCard(SettingsScroll)
+createDetailsExpandable(SettingsScroll)
+
+-- Initial Translation Refresh
+refreshTranslations()
