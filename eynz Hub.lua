@@ -1,11 +1,13 @@
 --[[
     ==================================================
-    eynz Hub - Mobile Edition (Ultimate V2.4)
+    eynz Hub - Mobile Edition (Ultimate V2.5)
     - Multilingual Support (English & Polski)
-    - Enhanced Item ESP for Interactive Parts
-    - Expanded About Section with Changelog
-    - Fixed Poland Mode Text Contrast
-    - Renames & Minor Improvements
+    - Rewritten & Highly Improved Item ESP
+    - Added Instant Prompt & Prompt Reach Modifier
+    - Added UI Pop-out/Close Tween Animations
+    - Enhanced & Cooler Slider Designs
+    - Fixed Poland Mode OFF Button Colors
+    - Version Bumps & Optimizations
     ==================================================
 --]]
 
@@ -40,20 +42,20 @@ local translatables = {}
 local statefulButtons = {}
 
 local ChangelogTextEN = [[
-• English & Polish Language support
-• Added Details Button in About Section
-• Fixed Poland Mode Text Colors
-• Renamed Looping Fullbright to Fullbright
-• Renamed Directional Flight to Flight
-• Minor Improvements & Bug Fixes
+• Added Instant Prompt with Reach modifier
+• Rewritten & Improved Item ESP
+• UI now opens with a smooth pop-out animation
+• Improved UI Scale Slider visual design
+• Fixed Poland Mode OFF button colors to gray
+• General bug fixes & optimizations
 ]]
 
 local ChangelogTextPL = [[
-• Wsparcie dla języka Angielskiego i Polskiego
-• Dodano przycisk Szczegóły w sekcji O Skrypcie
-• Naprawiono kolory tekstu w Trybie Polskim
-• Zmieniono nazwę Looping Fullbright na Full Jasność
-• Zmieniono nazwę Directional Flight na Lot
+• Dodano Szybką Interakcję z opcją Zasięgu
+• Przepisano i ulepszono ESP Rzeczy
+• Nowa animacja płynnego otwierania UI
+• Poprawiono wygląd suwaków (Sliders)
+• Naprawiono kolor wyłączonych przycisków w Trybie Polskim
 • Drobne poprawki i optymalizacje
 ]]
 
@@ -66,6 +68,9 @@ local Translations = {
     ["Enable Custom Speed"] = {EN = "Enable Custom Speed", PL = "Włącz Własną Prędkość"},
     ["WalkSpeed Value"] = {EN = "WalkSpeed Value", PL = "Prędkość Chodzenia"},
     ["Noclip"] = {EN = "Noclip", PL = "Przenikanie"},
+    ["Instant Prompt"] = {EN = "Instant Prompt", PL = "Szybka Interakcja"},
+    ["Prompt Reach"] = {EN = "Prompt Reach", PL = "Zasięg Interakcji"},
+    ["Max 100 studs"] = {EN = "Max 100 studs", PL = "Maksymalnie 100 studów"},
     ["Visuals / ESP"] = {EN = "Visuals / ESP", PL = "Wizualne / ESP"},
     ["Fullbright"] = {EN = "Fullbright", PL = "Full Jasność"},
     ["Player ESP"] = {EN = "Player ESP", PL = "ESP Graczy"},
@@ -137,6 +142,7 @@ UIListLayout.Parent = NotifContainer
 
 local isPolandMode = false
 local ThemeColor = Color3.fromRGB(138, 43, 226)
+local currentUIScale = 1.0
 
 local function ShowNotification(message)
     local NoteFrame = Instance.new("Frame")
@@ -245,10 +251,11 @@ MainFrame.Position = UDim2.new(0.5, -155, 0.5, -205)
 MainFrame.BackgroundColor3 = Color3.fromRGB(22, 22, 28)
 MainFrame.BorderSizePixel = 0
 MainFrame.ClipsDescendants = true
-MainFrame.Visible = true
+MainFrame.Visible = false -- Starts hidden
 MainFrame.Parent = ScreenGui
 
 local MainScale = Instance.new("UIScale", MainFrame)
+MainScale.Scale = 0 -- Scale 0 for Pop-in animation
 local MainCorner = Instance.new("UICorner") MainCorner.CornerRadius = UDim.new(0, 10) MainCorner.Parent = MainFrame
 applyThemeOutline(MainFrame)
 
@@ -291,7 +298,7 @@ local TitleText = Instance.new("TextLabel")
 TitleText.Size = UDim2.new(1, -40, 1, 0)
 TitleText.Position = UDim2.new(0, 12, 0, 0)
 TitleText.BackgroundTransparency = 1
-TitleText.Text = "eynz Hub | Mobile V2.3"
+TitleText.Text = "eynz Hub | Mobile V2.5"
 TitleText.TextColor3 = Color3.fromRGB(255, 255, 255)
 TitleText.TextSize = 16
 TitleText.Font = Enum.Font.SourceSansBold
@@ -308,8 +315,28 @@ CloseBtn.TextSize = 16
 CloseBtn.Font = Enum.Font.SourceSansBold
 CloseBtn.Parent = TitleBar
 
-CloseBtn.MouseButton1Click:Connect(function() MainFrame.Visible = false end)
-ToggleBtn.MouseButton1Click:Connect(function() MainFrame.Visible = not MainFrame.Visible end)
+local function closeUI()
+    local tw = TweenService:Create(MainScale, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Scale = 0})
+    tw:Play()
+    task.delay(0.25, function()
+        if MainScale.Scale == 0 then MainFrame.Visible = false end
+    end)
+end
+
+local function openUI()
+    MainFrame.Visible = true
+    TweenService:Create(MainScale, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Scale = currentUIScale}):Play()
+end
+
+CloseBtn.MouseButton1Click:Connect(closeUI)
+ToggleBtn.MouseButton1Click:Connect(function()
+    if MainFrame.Visible and MainScale.Scale > 0.1 then
+        closeUI()
+    else
+        openUI()
+    end
+end)
+openUI() -- Open automatically on run
 
 local function makeDraggable(frame, dragHandle, scaleObj)
     local dragging, dragStart, startPos
@@ -462,7 +489,16 @@ local function createToggle(textKey, parent, defaultState, callback)
     applyThemeOutline(Button)
 
     Button.Text = state and getTranslation("ON") or getTranslation("OFF")
-    table.insert(statefulButtons, {btn = Button, getState = function() return state end})
+    
+    table.insert(statefulButtons, {
+        btn = Button, 
+        getState = function() return state end,
+        updateMode = function(isPoland)
+            if not state then
+                Button.BackgroundColor3 = isPoland and Color3.fromRGB(150, 150, 150) or Color3.fromRGB(60, 60, 70)
+            end
+        end
+    })
 
     table.insert(ThemeUpdaters, function(newColor)
         if state then TweenService:Create(Button, TweenInfo.new(0.3), {BackgroundColor3 = newColor}):Play() end
@@ -470,7 +506,7 @@ local function createToggle(textKey, parent, defaultState, callback)
 
     Button.MouseButton1Click:Connect(function()
         state = not state
-        local targetColor = state and (isPolandMode and Color3.fromRGB(255, 0, 0) or ThemeColor) or Color3.fromRGB(60, 60, 70)
+        local targetColor = state and (isPolandMode and Color3.fromRGB(255, 0, 0) or ThemeColor) or (isPolandMode and Color3.fromRGB(150, 150, 150) or Color3.fromRGB(60, 60, 70))
         TweenService:Create(Button, TweenInfo.new(0.2), {BackgroundColor3 = targetColor}):Play()
         Button.Text = state and getTranslation("ON") or getTranslation("OFF")
         
@@ -531,7 +567,15 @@ local function createExpandableToggle(textKey, parent, defaultState, mainCallbac
     applyThemeOutline(Button)
 
     Button.Text = state and getTranslation("ON") or getTranslation("OFF")
-    table.insert(statefulButtons, {btn = Button, getState = function() return state end})
+    table.insert(statefulButtons, {
+        btn = Button, 
+        getState = function() return state end,
+        updateMode = function(isPoland)
+            if not state then
+                Button.BackgroundColor3 = isPoland and Color3.fromRGB(150, 150, 150) or Color3.fromRGB(60, 60, 70)
+            end
+        end
+    })
 
     table.insert(ThemeUpdaters, function(newColor)
         if state then TweenService:Create(Button, TweenInfo.new(0.3), {BackgroundColor3 = newColor}):Play() end
@@ -573,7 +617,15 @@ local function createExpandableToggle(textKey, parent, defaultState, mainCallbac
         applyThemeOutline(SubBtn)
 
         SubBtn.Text = subState and getTranslation("ON") or getTranslation("OFF")
-        table.insert(statefulButtons, {btn = SubBtn, getState = function() return subState end})
+        table.insert(statefulButtons, {
+            btn = SubBtn, 
+            getState = function() return subState end,
+            updateMode = function(isPoland)
+                if not subState then
+                    SubBtn.BackgroundColor3 = isPoland and Color3.fromRGB(150, 150, 150) or Color3.fromRGB(60, 60, 70)
+                end
+            end
+        })
 
         table.insert(ThemeUpdaters, function(newColor)
             if subState then TweenService:Create(SubBtn, TweenInfo.new(0.3), {BackgroundColor3 = newColor}):Play() end
@@ -581,7 +633,7 @@ local function createExpandableToggle(textKey, parent, defaultState, mainCallbac
 
         SubBtn.MouseButton1Click:Connect(function()
             subState = not subState
-            local targetColor = subState and (isPolandMode and Color3.fromRGB(255, 0, 0) or ThemeColor) or Color3.fromRGB(60, 60, 70)
+            local targetColor = subState and (isPolandMode and Color3.fromRGB(255, 0, 0) or ThemeColor) or (isPolandMode and Color3.fromRGB(150, 150, 150) or Color3.fromRGB(60, 60, 70))
             TweenService:Create(SubBtn, TweenInfo.new(0.2), {BackgroundColor3 = targetColor}):Play()
             SubBtn.Text = subState and getTranslation("ON") or getTranslation("OFF")
             if isPolandMode then SubBtn.TextColor3 = subState and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(255, 0, 0) end
@@ -592,7 +644,7 @@ local function createExpandableToggle(textKey, parent, defaultState, mainCallbac
 
     Button.MouseButton1Click:Connect(function()
         state = not state
-        local targetColor = state and (isPolandMode and Color3.fromRGB(255, 0, 0) or ThemeColor) or Color3.fromRGB(60, 60, 70)
+        local targetColor = state and (isPolandMode and Color3.fromRGB(255, 0, 0) or ThemeColor) or (isPolandMode and Color3.fromRGB(150, 150, 150) or Color3.fromRGB(60, 60, 70))
         TweenService:Create(Button, TweenInfo.new(0.2), {BackgroundColor3 = targetColor}):Play()
         Button.Text = state and getTranslation("ON") or getTranslation("OFF")
         if isPolandMode then Button.TextColor3 = state and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(255, 0, 0) end
@@ -613,6 +665,146 @@ local function createExpandableToggle(textKey, parent, defaultState, mainCallbac
                 tw:Play()
                 task.delay(0.25, function() if not expanded then frm.Visible = false end end)
             end
+        end
+    end)
+end
+
+-- New helper for Instant Prompt layout (Expandable Toggle with Input)
+local function createExpandableToggleWithInput(textKey, inputKey, parent, defaultState, defaultInput, callback)
+    local state = defaultState
+    local currentInput = defaultInput
+    local expanded = false
+
+    local ToggleFrame = Instance.new("Frame")
+    ToggleFrame.Size = UDim2.new(1, 0, 0, 40)
+    ToggleFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+    ToggleFrame.Parent = parent
+    table.insert(ThemeFrames, ToggleFrame)
+    local FrameCorner = Instance.new("UICorner") FrameCorner.CornerRadius = UDim.new(0, 6) FrameCorner.Parent = ToggleFrame
+    applyThemeOutline(ToggleFrame)
+
+    local Label = Instance.new("TextLabel")
+    Label.Size = UDim2.new(0.6, 0, 1, 0)
+    Label.Position = UDim2.new(0, 10, 0, 0)
+    Label.BackgroundTransparency = 1
+    Label.TextColor3 = Color3.fromRGB(240, 240, 240)
+    Label.TextSize = 14
+    Label.Font = Enum.Font.SourceSansSemibold
+    Label.TextXAlignment = Enum.TextXAlignment.Left
+    Label.Parent = ToggleFrame
+    addTranslatable(Label, textKey)
+    registerDynamicText(Label)
+
+    local ExpandBtn = Instance.new("TextButton")
+    ExpandBtn.Size = UDim2.new(0, 24, 0, 24)
+    ExpandBtn.Position = UDim2.new(1, -90, 0.5, -12)
+    ExpandBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+    ExpandBtn.Text = "+"
+    ExpandBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    ExpandBtn.Font = Enum.Font.SourceSansBold
+    ExpandBtn.TextSize = 16
+    ExpandBtn.Parent = ToggleFrame
+    local ExpCorner = Instance.new("UICorner") ExpCorner.CornerRadius = UDim.new(0, 6) ExpCorner.Parent = ExpandBtn
+    applyThemeOutline(ExpandBtn)
+    registerDynamicText(ExpandBtn)
+
+    local Button = Instance.new("TextButton")
+    Button.Size = UDim2.new(0, 50, 0, 24)
+    Button.Position = UDim2.new(1, -60, 0.5, -12)
+    Button.BackgroundColor3 = state and (isPolandMode and Color3.fromRGB(255, 0, 0) or ThemeColor) or Color3.fromRGB(60, 60, 70)
+    Button.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Button.Font = Enum.Font.SourceSansBold
+    Button.TextSize = 12
+    Button.Parent = ToggleFrame
+    local BtnCorner = Instance.new("UICorner") BtnCorner.CornerRadius = UDim.new(0, 6) BtnCorner.Parent = Button
+    applyThemeOutline(Button)
+
+    Button.Text = state and getTranslation("ON") or getTranslation("OFF")
+    table.insert(statefulButtons, {
+        btn = Button, 
+        getState = function() return state end,
+        updateMode = function(isPoland)
+            if not state then
+                Button.BackgroundColor3 = isPoland and Color3.fromRGB(150, 150, 150) or Color3.fromRGB(60, 60, 70)
+            end
+        end
+    })
+
+    table.insert(ThemeUpdaters, function(newColor)
+        if state then TweenService:Create(Button, TweenInfo.new(0.3), {BackgroundColor3 = newColor}):Play() end
+    end)
+
+    local SubFrame = Instance.new("Frame")
+    SubFrame.Size = UDim2.new(1, 0, 0, 0)
+    SubFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+    SubFrame.ClipsDescendants = true
+    SubFrame.Visible = false
+    SubFrame.Parent = parent
+    table.insert(ThemeSubFrames, SubFrame)
+    local SubCorner = Instance.new("UICorner") SubCorner.CornerRadius = UDim.new(0, 6) SubCorner.Parent = SubFrame
+    applyThemeOutline(SubFrame)
+
+    local SubLabel = Instance.new("TextLabel")
+    SubLabel.Size = UDim2.new(0.5, 0, 0, 35)
+    SubLabel.Position = UDim2.new(0, 10, 0, 0)
+    SubLabel.BackgroundTransparency = 1
+    SubLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+    SubLabel.TextSize = 13
+    SubLabel.Font = Enum.Font.SourceSansSemibold
+    SubLabel.TextXAlignment = Enum.TextXAlignment.Left
+    SubLabel.Parent = SubFrame
+    addTranslatable(SubLabel, inputKey)
+    registerDynamicText(SubLabel)
+
+    local InputBox = Instance.new("TextBox")
+    InputBox.Size = UDim2.new(0, 60, 0, 22)
+    InputBox.Position = UDim2.new(1, -70, 0, 6)
+    InputBox.BackgroundColor3 = Color3.fromRGB(20, 20, 26)
+    InputBox.Text = tostring(currentInput)
+    InputBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+    InputBox.Font = Enum.Font.SourceSansBold
+    InputBox.TextSize = 12
+    InputBox.Parent = SubFrame
+    local BoxCorner = Instance.new("UICorner") BoxCorner.CornerRadius = UDim.new(0, 6) BoxCorner.Parent = InputBox
+    applyThemeOutline(InputBox)
+    registerDynamicText(InputBox)
+
+    InputBox.FocusLost:Connect(function()
+        local val = tonumber(InputBox.Text)
+        if val then
+            if val > 100 then
+                val = 100
+                InputBox.Text = "100"
+                ShowNotification(getTranslation("Max 100 studs"))
+            end
+            currentInput = val
+            callback(state, currentInput)
+        else
+            InputBox.Text = tostring(currentInput)
+        end
+    end)
+
+    Button.MouseButton1Click:Connect(function()
+        state = not state
+        local targetColor = state and (isPolandMode and Color3.fromRGB(255, 0, 0) or ThemeColor) or (isPolandMode and Color3.fromRGB(150, 150, 150) or Color3.fromRGB(60, 60, 70))
+        TweenService:Create(Button, TweenInfo.new(0.2), {BackgroundColor3 = targetColor}):Play()
+        Button.Text = state and getTranslation("ON") or getTranslation("OFF")
+        if isPolandMode then Button.TextColor3 = state and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(255, 0, 0) end
+        callback(state, currentInput)
+    end)
+
+    ExpandBtn.MouseButton1Click:Connect(function()
+        expanded = not expanded
+        local targetRotation = expanded and 45 or 0
+        TweenService:Create(ExpandBtn, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Rotation = targetRotation}):Play()
+
+        if expanded then
+            SubFrame.Visible = true
+            TweenService:Create(SubFrame, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = UDim2.new(1, 0, 0, 35)}):Play()
+        else
+            local tw = TweenService:Create(SubFrame, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = UDim2.new(1, 0, 0, 0)})
+            tw:Play()
+            task.delay(0.25, function() if not expanded then SubFrame.Visible = false end end)
         end
     end)
 end
@@ -650,9 +842,10 @@ local function createSlider(labelText, parent, min, max, defaultVal, callback)
     ValueLabel.Parent = RowFrame
     registerDynamicText(ValueLabel)
 
+    -- Improved Slider Visuals
     local SliderBg = Instance.new("Frame")
-    SliderBg.Size = UDim2.new(1, -20, 0, 8)
-    SliderBg.Position = UDim2.new(0, 10, 0, 32)
+    SliderBg.Size = UDim2.new(1, -20, 0, 10) -- Thicker Track
+    SliderBg.Position = UDim2.new(0, 10, 0, 30)
     SliderBg.BackgroundColor3 = Color3.fromRGB(20, 20, 26)
     SliderBg.Parent = RowFrame
     local BgCorner = Instance.new("UICorner") BgCorner.CornerRadius = UDim.new(1, 0) BgCorner.Parent = SliderBg
@@ -664,6 +857,13 @@ local function createSlider(labelText, parent, min, max, defaultVal, callback)
     SliderFill.Parent = SliderBg
     local FillCorner = Instance.new("UICorner") FillCorner.CornerRadius = UDim.new(1, 0) FillCorner.Parent = SliderFill
     table.insert(ThemeBackgrounds, SliderFill)
+    
+    local SliderHandle = Instance.new("Frame")
+    SliderHandle.Size = UDim2.new(0, 16, 0, 16)
+    SliderHandle.Position = UDim2.new(1, -8, 0.5, -8)
+    SliderHandle.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
+    local HandleCorner = Instance.new("UICorner") HandleCorner.CornerRadius = UDim.new(1, 0) HandleCorner.Parent = SliderHandle
+    SliderHandle.Parent = SliderFill
 
     local DragBtn = Instance.new("TextButton")
     DragBtn.Size = UDim2.new(1, 0, 1, 10)
@@ -759,6 +959,7 @@ local function setPolandMode(state)
         for _, item in ipairs(statefulButtons) do
             if item.btn and item.btn.Parent then
                 item.btn.TextColor3 = item.getState() and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(255, 0, 0)
+                if item.updateMode then item.updateMode(true) end
             end
         end
         for _, func in ipairs(ThemeUpdaters) do func(Color3.fromRGB(255, 0, 0)) end
@@ -797,7 +998,10 @@ local function setPolandMode(state)
             end
         end
         for _, item in ipairs(statefulButtons) do
-            if item.btn and item.btn.Parent then item.btn.TextColor3 = Color3.fromRGB(255, 255, 255) end
+            if item.btn and item.btn.Parent then 
+                item.btn.TextColor3 = Color3.fromRGB(255, 255, 255) 
+                if item.updateMode then item.updateMode(false) end
+            end
         end
         for _, func in ipairs(ThemeUpdaters) do func(ThemeColor) end
     end
@@ -1041,7 +1245,7 @@ local function createAboutCard(parent)
     Lbl2.Size = UDim2.new(1, 0, 0, 30)
     Lbl2.Position = UDim2.new(0, 0, 0, 25)
     Lbl2.BackgroundTransparency = 1
-    Lbl2.Text = "Version 2.3"
+    Lbl2.Text = "Version 2.5"
     Lbl2.TextColor3 = Color3.fromRGB(200, 200, 200)
     Lbl2.Font = Enum.Font.SourceSansSemibold
     Lbl2.TextSize = 14
@@ -1244,6 +1448,45 @@ table.insert(ActiveConnections, RunService.Stepped:Connect(function()
     end
 end))
 
+-- INSTANT PROMPT & REACH
+local instantPromptEnabled = false
+local promptReachValue = 10
+
+local function updatePrompt(prompt)
+    if not prompt:IsA("ProximityPrompt") then return end
+    if not prompt:GetAttribute("OrigHold") then
+        prompt:SetAttribute("OrigHold", prompt.HoldDuration)
+        prompt:SetAttribute("OrigReach", prompt.MaxActivationDistance)
+    end
+    
+    if instantPromptEnabled then
+        prompt.HoldDuration = 0
+        prompt.MaxActivationDistance = promptReachValue
+    else
+        prompt.HoldDuration = prompt:GetAttribute("OrigHold")
+        prompt.MaxActivationDistance = prompt:GetAttribute("OrigReach")
+    end
+end
+
+local function refreshAllPrompts()
+    for _, obj in pairs(workspace:GetDescendants()) do
+        if obj:IsA("ProximityPrompt") then updatePrompt(obj) end
+    end
+end
+
+createExpandableToggleWithInput("Instant Prompt", "Prompt Reach", FeaturesScroll, false, 10, function(state, reach)
+    instantPromptEnabled = state
+    promptReachValue = reach
+    refreshAllPrompts()
+end)
+
+table.insert(ActiveConnections, workspace.DescendantAdded:Connect(function(obj)
+    if obj:IsA("ProximityPrompt") then
+        task.wait(0.1)
+        updatePrompt(obj)
+    end
+end))
+
 ----------------------------------------------------
 -- VISUALS / ESP
 ----------------------------------------------------
@@ -1284,7 +1527,7 @@ local function createNameTag(nameText, color)
     txt.TextSize = 14
     txt.Parent = bg
     return bg
-end
+end 
 
 -- ESP SYSTEM
 local playerEspEnabled, playerNamesEnabled = false, false
@@ -1418,37 +1661,33 @@ createExpandableToggle("NPC ESP", FeaturesScroll, false, function(state)
     end
 end, {{ text = "Show Names", callback = function(state) npcNamesEnabled = state refreshAllNPCsESP() end }})
 
--- Enhanced ITEM ESP
-local function isItem(obj)
-    -- Default dropped tools
-    if obj:IsA("Tool") and obj.Parent and not Players:GetPlayerFromCharacter(obj.Parent) then 
-        return true 
+-- Rewritten ITEM ESP (Stable & Highly Accurate)
+local function getESPAdornee(obj)
+    if obj:IsA("Tool") then
+        -- Don't highlight tools held by players or NPCs
+        if obj.Parent and (Players:GetPlayerFromCharacter(obj.Parent) or obj.Parent:FindFirstChildOfClass("Humanoid")) then return nil end
+        return obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart") or obj
     end
-    
-    -- Loose interactable meshes or parts (useful for games like Camping)
-    if (obj:IsA("Model") or obj:IsA("BasePart")) and not Players:GetPlayerFromCharacter(obj) then
-        if obj:FindFirstChildOfClass("ClickDetector") or obj:FindFirstChildOfClass("ProximityPrompt") then
-            -- Avoid highlighting massive structures or accidental characters
-            if not obj:FindFirstChildOfClass("Humanoid") and not (obj.Parent and obj.Parent:FindFirstChildOfClass("Humanoid")) then
-                if obj:IsA("BasePart") and obj.Size.Magnitude < 30 then
-                    return true
-                elseif obj:IsA("Model") then
-                    return true
-                end
+    if obj:IsA("ProximityPrompt") or obj:IsA("ClickDetector") then
+        local parent = obj.Parent
+        if parent then
+            -- Verify it doesn't belong to a Character
+            local model = parent:IsA("Model") and parent or parent.Parent
+            if model and model:IsA("Model") and model:FindFirstChildOfClass("Humanoid") then
+                return nil 
             end
+            if parent:IsA("BasePart") then return parent end
+            if parent:IsA("Model") then return parent.PrimaryPart or parent:FindFirstChildWhichIsA("BasePart") or parent end
         end
     end
-    return false
+    return nil
 end
 
-local function applyItemVisuals(item)
-    if not activeItems[item] then activeItems[item] = {} end
-    local data = activeItems[item]
+local function applyItemVisuals(itemObj)
+    if not activeItems[itemObj] then activeItems[itemObj] = {} end
+    local data = activeItems[itemObj]
     
-    local adornee = item
-    if item:IsA("Tool") then
-        adornee = item:FindFirstChildWhichIsA("BasePart") or item.PrimaryPart or item
-    end
+    local adornee = getESPAdornee(itemObj)
     
     if itemEspEnabled and adornee then
         if not data.Highlight then
@@ -1456,23 +1695,30 @@ local function applyItemVisuals(item)
             hl.FillColor = Color3.fromRGB(255, 215, 0)
             hl.FillTransparency = 0.5
             hl.OutlineColor = Color3.new(1,1,1)
-            hl.Adornee = item
-            hl.Parent = item
+            hl.Adornee = adornee
+            hl.Parent = adornee
             data.Highlight = hl
+        else
+            data.Highlight.Adornee = adornee
+            data.Highlight.Parent = adornee
         end
+        
         if itemNamesEnabled and not data.NameTag then
-            -- Nametag needs a BasePart to attach reliably
-            local tagAdornee = adornee
-            if tagAdornee:IsA("Model") and not tagAdornee.PrimaryPart then
-                tagAdornee = tagAdornee:FindFirstChildWhichIsA("BasePart") or tagAdornee
+            local nameStr = itemObj.Name
+            -- Extract better name for Prompts/ClickDetectors
+            if itemObj:IsA("ProximityPrompt") and itemObj.ActionText ~= "" then
+                nameStr = itemObj.ActionText
+            elseif itemObj.Parent and (itemObj:IsA("ClickDetector") or itemObj:IsA("ProximityPrompt")) then
+                nameStr = itemObj.Parent.Name
             end
             
-            local bg = createNameTag(item.Name, Color3.fromRGB(255, 215, 0))
-            bg.Adornee = tagAdornee
-            bg.Parent = tagAdornee
+            local bg = createNameTag(nameStr, Color3.fromRGB(255, 215, 0))
+            bg.Adornee = adornee
+            bg.Parent = adornee
             data.NameTag = bg
         end
     end
+    
     if not itemEspEnabled or not adornee then
         if data.Highlight then data.Highlight:Destroy(); data.Highlight = nil end
         if data.NameTag then data.NameTag:Destroy(); data.NameTag = nil end
@@ -1487,21 +1733,26 @@ createExpandableToggle("Item ESP", FeaturesScroll, false, function(state)
     itemEspEnabled = state
     if itemEspEnabled then
         for _, obj in pairs(workspace:GetDescendants()) do
-            if isItem(obj) then activeItems[obj] = {}; applyItemVisuals(obj) end
+            if obj:IsA("Tool") or obj:IsA("ProximityPrompt") or obj:IsA("ClickDetector") then 
+                activeItems[obj] = {}; applyItemVisuals(obj) 
+            end
         end
         itemDescendantConn = workspace.DescendantAdded:Connect(function(obj)
             task.wait(0.1)
-            if isItem(obj) then activeItems[obj] = {}; applyItemVisuals(obj)
-            elseif obj.Parent and isItem(obj.Parent) then activeItems[obj.Parent] = {}; applyItemVisuals(obj.Parent) end
+            if obj:IsA("Tool") or obj:IsA("ProximityPrompt") or obj:IsA("ClickDetector") then 
+                activeItems[obj] = {}; applyItemVisuals(obj) 
+            end
         end)
         table.insert(ActiveConnections, itemDescendantConn)
         itemCleanLoop = task.spawn(function()
             while task.wait(2) do
-                for item, data in pairs(activeItems) do
-                    if not item.Parent or not isItem(item) then
+                for itemObj, data in pairs(activeItems) do
+                    if not itemObj.Parent or not getESPAdornee(itemObj) then
                         if data.Highlight then data.Highlight:Destroy() end
                         if data.NameTag then data.NameTag:Destroy() end
-                        activeItems[item] = nil
+                        activeItems[itemObj] = nil
+                    else
+                        applyItemVisuals(itemObj)
                     end
                 end
             end
@@ -1519,7 +1770,10 @@ end, {{ text = "Show Names", callback = function(state) itemNamesEnabled = state
 createSection("General Setup", SettingsScroll)
 
 createSlider("UI Scale", SettingsScroll, 0.5, 1.5, 1.0, function(val)
-    TweenService:Create(MainScale, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Scale = val}):Play()
+    currentUIScale = val
+    if MainFrame.Visible and MainScale.Scale > 0.1 then
+        TweenService:Create(MainScale, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Scale = val}):Play()
+    end
     TweenService:Create(LauncherScale, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Scale = val}):Play()
 end)
 
@@ -1545,6 +1799,7 @@ local function DestroyHub()
     end
     
     fullbrightEnabled = false; resetLighting()
+    instantPromptEnabled = false; refreshAllPrompts()
     
     playerEspEnabled = false; refreshAllPlayersESP()
     npcEspEnabled = false; refreshAllNPCsESP()
