@@ -1,8 +1,9 @@
 --[[
     ==================================================
-    eynz Hub - Mobile Edition (Ultimate V2.5)
+    eynz Hub - Mobile Edition (Ultimate V2.5.1)
     - Multilingual Support (English & Polski)
     - Rewritten & Highly Improved Item ESP
+    - Separated Item ESP & Interactable ESP
     - Added Instant Prompt & Prompt Reach Modifier
     - Added UI Pop-out/Close Tween Animations
     - Enhanced & Cooler Slider Designs
@@ -43,7 +44,7 @@ local statefulButtons = {}
 
 local ChangelogTextEN = [[
 • Added Instant Prompt with Reach modifier
-• Rewritten & Improved Item ESP
+• Separated Item ESP and Interactables ESP
 • UI now opens with a smooth pop-out animation
 • Improved UI Scale Slider visual design
 • Fixed Poland Mode OFF button colors to gray
@@ -52,7 +53,7 @@ local ChangelogTextEN = [[
 
 local ChangelogTextPL = [[
 • Dodano Szybką Interakcję z opcją Zasięgu
-• Przepisano i ulepszono ESP Rzeczy
+• Oddzielono ESP Rzeczy od ESP Interakcji
 • Nowa animacja płynnego otwierania UI
 • Poprawiono wygląd suwaków (Sliders)
 • Naprawiono kolor wyłączonych przycisków w Trybie Polskim
@@ -77,6 +78,9 @@ local Translations = {
     ["NPC ESP"] = {EN = "NPC ESP", PL = "NPC ESP"},
     ["Item ESP"] = {EN = "Item ESP", PL = "ESP Rzeczy"},
     ["Show Names"] = {EN = "Show Names", PL = "Pokaż Nazwy"},
+    ["Show Item Names"] = {EN = "Show Item Names", PL = "Pokaż Nazwy Przedmiotów"},
+    ["Interactables ESP"] = {EN = "Interactables ESP", PL = "ESP Interakcji"},
+    ["Show Int. Names"] = {EN = "Show Int. Names", PL = "Pokaż Nazwy Interakcji"},
     ["General Setup"] = {EN = "General Setup", PL = "Główne Ustawienia"},
     ["UI Scale"] = {EN = "UI Scale", PL = "Skala UI"},
     ["Language: English"] = {EN = "Language: English", PL = "Język: Polski"},
@@ -251,11 +255,11 @@ MainFrame.Position = UDim2.new(0.5, -155, 0.5, -205)
 MainFrame.BackgroundColor3 = Color3.fromRGB(22, 22, 28)
 MainFrame.BorderSizePixel = 0
 MainFrame.ClipsDescendants = true
-MainFrame.Visible = false -- Starts hidden
+MainFrame.Visible = false
 MainFrame.Parent = ScreenGui
 
 local MainScale = Instance.new("UIScale", MainFrame)
-MainScale.Scale = 0 -- Scale 0 for Pop-in animation
+MainScale.Scale = 0
 local MainCorner = Instance.new("UICorner") MainCorner.CornerRadius = UDim.new(0, 10) MainCorner.Parent = MainFrame
 applyThemeOutline(MainFrame)
 
@@ -336,7 +340,7 @@ ToggleBtn.MouseButton1Click:Connect(function()
         openUI()
     end
 end)
-openUI() -- Open automatically on run
+openUI()
 
 local function makeDraggable(frame, dragHandle, scaleObj)
     local dragging, dragStart, startPos
@@ -669,7 +673,6 @@ local function createExpandableToggle(textKey, parent, defaultState, mainCallbac
     end)
 end
 
--- New helper for Instant Prompt layout (Expandable Toggle with Input)
 local function createExpandableToggleWithInput(textKey, inputKey, parent, defaultState, defaultInput, callback)
     local state = defaultState
     local currentInput = defaultInput
@@ -842,9 +845,8 @@ local function createSlider(labelText, parent, min, max, defaultVal, callback)
     ValueLabel.Parent = RowFrame
     registerDynamicText(ValueLabel)
 
-    -- Improved Slider Visuals
     local SliderBg = Instance.new("Frame")
-    SliderBg.Size = UDim2.new(1, -20, 0, 10) -- Thicker Track
+    SliderBg.Size = UDim2.new(1, -20, 0, 10) 
     SliderBg.Position = UDim2.new(0, 10, 0, 30)
     SliderBg.BackgroundColor3 = Color3.fromRGB(20, 20, 26)
     SliderBg.Parent = RowFrame
@@ -1532,9 +1534,8 @@ end
 -- ESP SYSTEM
 local playerEspEnabled, playerNamesEnabled = false, false
 local npcEspEnabled, npcNamesEnabled = false, false
-local itemEspEnabled, itemNamesEnabled = false, false
-local playerESPData, activeNPCs, activeItems = {}, {}, {}
-local npcDescendantConn, itemDescendantConn, npcCleanLoop, itemCleanLoop
+local playerESPData, activeNPCs = {}, {}
+local npcDescendantConn, npcCleanLoop
 
 local function applyPlayerESP(player)
     if player == LocalPlayer then return end
@@ -1661,21 +1662,25 @@ createExpandableToggle("NPC ESP", FeaturesScroll, false, function(state)
     end
 end, {{ text = "Show Names", callback = function(state) npcNamesEnabled = state refreshAllNPCsESP() end }})
 
--- Rewritten ITEM ESP (Stable & Highly Accurate)
+
+-- Rewritten ITEM ESP & INTERACTABLES ESP
+local itemEspEnabled, itemNamesEnabled = false, false
+local interactableEspEnabled, interactableNamesEnabled = false, false
+
+local activeItems, activeInteractables = {}, {}
+local itemDescendantConn, interactableDescendantConn
+local itemCleanLoop, interactableCleanLoop
+
 local function getESPAdornee(obj)
     if obj:IsA("Tool") then
-        -- Don't highlight tools held by players or NPCs
         if obj.Parent and (Players:GetPlayerFromCharacter(obj.Parent) or obj.Parent:FindFirstChildOfClass("Humanoid")) then return nil end
         return obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart") or obj
     end
     if obj:IsA("ProximityPrompt") or obj:IsA("ClickDetector") then
         local parent = obj.Parent
         if parent then
-            -- Verify it doesn't belong to a Character
             local model = parent:IsA("Model") and parent or parent.Parent
-            if model and model:IsA("Model") and model:FindFirstChildOfClass("Humanoid") then
-                return nil 
-            end
+            if model and model:IsA("Model") and model:FindFirstChildOfClass("Humanoid") then return nil end
             if parent:IsA("BasePart") then return parent end
             if parent:IsA("Model") then return parent.PrimaryPart or parent:FindFirstChildWhichIsA("BasePart") or parent end
         end
@@ -1686,13 +1691,12 @@ end
 local function applyItemVisuals(itemObj)
     if not activeItems[itemObj] then activeItems[itemObj] = {} end
     local data = activeItems[itemObj]
-    
     local adornee = getESPAdornee(itemObj)
     
     if itemEspEnabled and adornee then
         if not data.Highlight then
             local hl = Instance.new("Highlight")
-            hl.FillColor = Color3.fromRGB(255, 215, 0)
+            hl.FillColor = Color3.fromRGB(0, 255, 128) -- Green for Pickable Items
             hl.FillTransparency = 0.5
             hl.OutlineColor = Color3.new(1,1,1)
             hl.Adornee = adornee
@@ -1704,15 +1708,7 @@ local function applyItemVisuals(itemObj)
         end
         
         if itemNamesEnabled and not data.NameTag then
-            local nameStr = itemObj.Name
-            -- Extract better name for Prompts/ClickDetectors
-            if itemObj:IsA("ProximityPrompt") and itemObj.ActionText ~= "" then
-                nameStr = itemObj.ActionText
-            elseif itemObj.Parent and (itemObj:IsA("ClickDetector") or itemObj:IsA("ProximityPrompt")) then
-                nameStr = itemObj.Parent.Name
-            end
-            
-            local bg = createNameTag(nameStr, Color3.fromRGB(255, 215, 0))
+            local bg = createNameTag(itemObj.Name, Color3.fromRGB(0, 255, 128))
             bg.Adornee = adornee
             bg.Parent = adornee
             data.NameTag = bg
@@ -1729,21 +1725,17 @@ end
 
 local function refreshAllItemsESP() for item, _ in pairs(activeItems) do applyItemVisuals(item) end end
 
-createExpandableToggle("Item ESP", FeaturesScroll, false, function(state)
-    itemEspEnabled = state
+local function toggleItemESP()
     if itemEspEnabled then
         for _, obj in pairs(workspace:GetDescendants()) do
-            if obj:IsA("Tool") or obj:IsA("ProximityPrompt") or obj:IsA("ClickDetector") then 
-                activeItems[obj] = {}; applyItemVisuals(obj) 
-            end
+            if obj:IsA("Tool") then activeItems[obj] = {}; applyItemVisuals(obj) end
         end
         itemDescendantConn = workspace.DescendantAdded:Connect(function(obj)
             task.wait(0.1)
-            if obj:IsA("Tool") or obj:IsA("ProximityPrompt") or obj:IsA("ClickDetector") then 
-                activeItems[obj] = {}; applyItemVisuals(obj) 
-            end
+            if obj:IsA("Tool") then activeItems[obj] = {}; applyItemVisuals(obj) end
         end)
-        table.insert(ActiveConnections, itemDescendantConn)
+        if not table.find(ActiveConnections, itemDescendantConn) then table.insert(ActiveConnections, itemDescendantConn) end
+        
         itemCleanLoop = task.spawn(function()
             while task.wait(2) do
                 for itemObj, data in pairs(activeItems) do
@@ -1762,7 +1754,95 @@ createExpandableToggle("Item ESP", FeaturesScroll, false, function(state)
         if itemCleanLoop then task.cancel(itemCleanLoop); itemCleanLoop = nil end
         refreshAllItemsESP(); activeItems = {}
     end
-end, {{ text = "Show Names", callback = function(state) itemNamesEnabled = state refreshAllItemsESP() end }})
+end
+
+local function applyInteractableVisuals(intObj)
+    if not activeInteractables[intObj] then activeInteractables[intObj] = {} end
+    local data = activeInteractables[intObj]
+    local adornee = getESPAdornee(intObj)
+    
+    if interactableEspEnabled and adornee then
+        if not data.Highlight then
+            local hl = Instance.new("Highlight")
+            hl.FillColor = Color3.fromRGB(255, 215, 0) -- Gold for Interactables
+            hl.FillTransparency = 0.5
+            hl.OutlineColor = Color3.new(1,1,1)
+            hl.Adornee = adornee
+            hl.Parent = adornee
+            data.Highlight = hl
+        else
+            data.Highlight.Adornee = adornee
+            data.Highlight.Parent = adornee
+        end
+        
+        if interactableNamesEnabled and not data.NameTag then
+            local nameStr = intObj.Name
+            if intObj:IsA("ProximityPrompt") and intObj.ActionText ~= "" then
+                nameStr = intObj.ActionText
+            elseif intObj.Parent and (intObj:IsA("ClickDetector") or intObj:IsA("ProximityPrompt")) then
+                nameStr = intObj.Parent.Name
+            end
+            
+            local bg = createNameTag(nameStr, Color3.fromRGB(255, 215, 0))
+            bg.Adornee = adornee
+            bg.Parent = adornee
+            data.NameTag = bg
+        end
+    end
+    
+    if not interactableEspEnabled or not adornee then
+        if data.Highlight then data.Highlight:Destroy(); data.Highlight = nil end
+        if data.NameTag then data.NameTag:Destroy(); data.NameTag = nil end
+    else
+        if not interactableNamesEnabled and data.NameTag then data.NameTag:Destroy(); data.NameTag = nil end
+    end
+end
+
+local function refreshAllInteractablesESP() for intObj, _ in pairs(activeInteractables) do applyInteractableVisuals(intObj) end end
+
+local function toggleInteractablesESP()
+    if interactableEspEnabled then
+        for _, obj in pairs(workspace:GetDescendants()) do
+            if obj:IsA("ProximityPrompt") or obj:IsA("ClickDetector") then 
+                activeInteractables[obj] = {}; applyInteractableVisuals(obj) 
+            end
+        end
+        interactableDescendantConn = workspace.DescendantAdded:Connect(function(obj)
+            task.wait(0.1)
+            if obj:IsA("ProximityPrompt") or obj:IsA("ClickDetector") then 
+                activeInteractables[obj] = {}; applyInteractableVisuals(obj) 
+            end
+        end)
+        if not table.find(ActiveConnections, interactableDescendantConn) then table.insert(ActiveConnections, interactableDescendantConn) end
+        
+        interactableCleanLoop = task.spawn(function()
+            while task.wait(2) do
+                for intObj, data in pairs(activeInteractables) do
+                    if not intObj.Parent or not getESPAdornee(intObj) then
+                        if data.Highlight then data.Highlight:Destroy() end
+                        if data.NameTag then data.NameTag:Destroy() end
+                        activeInteractables[intObj] = nil
+                    else
+                        applyInteractableVisuals(intObj)
+                    end
+                end
+            end
+        end)
+    else
+        if interactableDescendantConn then interactableDescendantConn:Disconnect(); interactableDescendantConn = nil end
+        if interactableCleanLoop then task.cancel(interactableCleanLoop); interactableCleanLoop = nil end
+        refreshAllInteractablesESP(); activeInteractables = {}
+    end
+end
+
+createExpandableToggle("Item ESP", FeaturesScroll, false, function(state)
+    itemEspEnabled = state
+    toggleItemESP()
+end, {
+    { text = "Show Item Names", callback = function(state) itemNamesEnabled = state refreshAllItemsESP() end },
+    { text = "Interactables ESP", callback = function(state) interactableEspEnabled = state toggleInteractablesESP() end },
+    { text = "Show Int. Names", callback = function(state) interactableNamesEnabled = state refreshAllInteractablesESP() end }
+})
 
 ----------------------------------------------------
 -- SETTINGS TAB IMPLEMENTATION
@@ -1803,14 +1883,12 @@ local function DestroyHub()
     
     playerEspEnabled = false; refreshAllPlayersESP()
     npcEspEnabled = false; refreshAllNPCsESP()
-    itemEspEnabled = false; refreshAllItemsESP()
+    itemEspEnabled = false; toggleItemESP()
+    interactableEspEnabled = false; toggleInteractablesESP()
 
     for _, connection in ipairs(ActiveConnections) do
         if connection and connection.Disconnect then connection:Disconnect() end
     end
-
-    if npcCleanLoop then task.cancel(npcCleanLoop) end
-    if itemCleanLoop then task.cancel(itemCleanLoop) end
 
     if ScreenGui then ScreenGui:Destroy() end
     ShowNotification(getTranslation("eynz Hub successfully destroyed"))
