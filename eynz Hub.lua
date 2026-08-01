@@ -1,13 +1,12 @@
 --[[
     ==================================================
-    eynz Hub - Mobile Edition (Ultimate V2.5.1)
-    - Multilingual Support (English & Polski)
-    - Rewritten & Highly Improved Item ESP
-    - Separated Item ESP & Interactable ESP
-    - Added Instant Prompt & Prompt Reach Modifier
-    - Added UI Pop-out/Close Tween Animations
-    - Enhanced & Cooler Slider Designs
-    - Fixed Poland Mode OFF Button Colors
+    eynz Hub - Mobile Edition (Ultimate V2.6)
+    - Replaced Item ESP with Interactables ESP
+    - Added Player Teleport with Avatar Icons
+    - UI Opening/Closing Elastic Rotation Tweens
+    - Fixed Mobile UI Dragging Camera Pan Bug
+    - Fixed Poland Mode Sub-Elements & Input Colors
+    - Fixed Color Presets Missing Translations
     - Version Bumps & Optimizations
     ==================================================
 --]]
@@ -41,23 +40,24 @@ if ParentGui:FindFirstChild("eynzNotifications") then ParentGui:FindFirstChild("
 local currentLang = "EN"
 local translatables = {}
 local statefulButtons = {}
+local TranslationUpdaters = {}
 
 local ChangelogTextEN = [[
-• Added Instant Prompt with Reach modifier
-• Separated Item ESP and Interactables ESP
-• UI now opens with a smooth pop-out animation
-• Improved UI Scale Slider visual design
-• Fixed Poland Mode OFF button colors to gray
-• General bug fixes & optimizations
+• Added Player Teleport feature with avatars
+• Replaced Item ESP with Interactables ESP
+• Made UI opening animation cooler (elastic fly-in)
+• Fixed UI camera dragging bug on Mobile
+• Fixed Poland Mode colors for textboxes/buttons
+• Added translations for color presets
 ]]
 
 local ChangelogTextPL = [[
-• Dodano Szybką Interakcję z opcją Zasięgu
-• Oddzielono ESP Rzeczy od ESP Interakcji
-• Nowa animacja płynnego otwierania UI
-• Poprawiono wygląd suwaków (Sliders)
-• Naprawiono kolor wyłączonych przycisków w Trybie Polskim
-• Drobne poprawki i optymalizacje
+• Dodano Teleport do Graczy z awatarami
+• Zastąpiono ESP Rzeczy przez ESP Interakcji
+• Lepsza, bardziej elastyczna animacja otwierania UI
+• Naprawiono błąd obracania kamery przy przesuwaniu UI
+• Poprawiono kolory Trybu Polskiego dla przycisków
+• Dodano tłumaczenia dla nazw kolorów
 ]]
 
 local Translations = {
@@ -69,6 +69,9 @@ local Translations = {
     ["Enable Custom Speed"] = {EN = "Enable Custom Speed", PL = "Włącz Własną Prędkość"},
     ["WalkSpeed Value"] = {EN = "WalkSpeed Value", PL = "Prędkość Chodzenia"},
     ["Noclip"] = {EN = "Noclip", PL = "Przenikanie"},
+    ["Teleport to Player"] = {EN = "Teleport to Player", PL = "Teleportuj do Gracza"},
+    ["TP"] = {EN = "TP", PL = "TP"},
+    ["No Players"] = {EN = "No Players", PL = "Brak Graczy"},
     ["Instant Prompt"] = {EN = "Instant Prompt", PL = "Szybka Interakcja"},
     ["Prompt Reach"] = {EN = "Prompt Reach", PL = "Zasięg Interakcji"},
     ["Max 100 studs"] = {EN = "Max 100 studs", PL = "Maksymalnie 100 studów"},
@@ -76,15 +79,21 @@ local Translations = {
     ["Fullbright"] = {EN = "Fullbright", PL = "Full Jasność"},
     ["Player ESP"] = {EN = "Player ESP", PL = "ESP Graczy"},
     ["NPC ESP"] = {EN = "NPC ESP", PL = "NPC ESP"},
-    ["Item ESP"] = {EN = "Item ESP", PL = "ESP Rzeczy"},
     ["Show Names"] = {EN = "Show Names", PL = "Pokaż Nazwy"},
-    ["Show Item Names"] = {EN = "Show Item Names", PL = "Pokaż Nazwy Przedmiotów"},
     ["Interactables ESP"] = {EN = "Interactables ESP", PL = "ESP Interakcji"},
     ["Show Int. Names"] = {EN = "Show Int. Names", PL = "Pokaż Nazwy Interakcji"},
     ["General Setup"] = {EN = "General Setup", PL = "Główne Ustawienia"},
     ["UI Scale"] = {EN = "UI Scale", PL = "Skala UI"},
     ["Language: English"] = {EN = "Language: English", PL = "Język: Polski"},
     ["Color Presets & Themes"] = {EN = "Color Presets & Themes", PL = "Kolory i Motywy"},
+    ["Purple (Default)"] = {EN = "Purple (Default)", PL = "Fioletowy (Domyślny)"},
+    ["Orange"] = {EN = "Orange", PL = "Pomarańczowy"},
+    ["Brown"] = {EN = "Brown", PL = "Brązowy"},
+    ["Yellow"] = {EN = "Yellow", PL = "Żółty"},
+    ["Blue"] = {EN = "Blue", PL = "Niebieski"},
+    ["Red"] = {EN = "Red", PL = "Czerwony"},
+    ["Green"] = {EN = "Green", PL = "Zielony"},
+    ["White"] = {EN = "White", PL = "Biały"},
     ["Custom RGB"] = {EN = "Custom RGB", PL = "Własne RGB"},
     ["Poland Mode"] = {EN = "Poland Mode", PL = "Tryb Polski"},
     ["Danger Zone"] = {EN = "Danger Zone", PL = "Strefa Zagrożenia"},
@@ -120,6 +129,7 @@ local function refreshTranslations()
             item.btn.Text = item.getState() and getTranslation("ON") or getTranslation("OFF")
         end
     end
+    for _, func in ipairs(TranslationUpdaters) do func() end
 end
 
 ----------------------------------------------------
@@ -189,7 +199,7 @@ local function ShowNotification(message)
 end
 
 ----------------------------------------------------
--- LIGHTING BACKUP & THEME MANAGERS
+-- THEME MANAGERS & GUI ELEMENTS TRACKING
 ----------------------------------------------------
 local origBrightness = Lighting.Brightness
 local origClockTime = Lighting.ClockTime
@@ -208,6 +218,7 @@ local function resetLighting()
 end
 
 local ThemeStrokes, ThemeTexts, ThemeBackgrounds, ThemeUpdaters, ThemeFrames, ThemeSubFrames, DynamicTextElements = {}, {}, {}, {}, {}, {}, {}
+local ThemeInputBoxes, ThemeSecondaryBtns, ThemePresetBtns = {}, {}, {}
 
 local function applyThemeOutline(guiObject, thickness)
     local stroke = Instance.new("UIStroke")
@@ -242,6 +253,7 @@ ToggleBtn.Text = "eynz Hub"
 ToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 ToggleBtn.TextSize = 14
 ToggleBtn.Font = Enum.Font.SourceSansBold
+ToggleBtn.Active = true -- Prevent camera dragging
 ToggleBtn.Parent = ScreenGui
 
 local LauncherScale = Instance.new("UIScale", ToggleBtn)
@@ -256,8 +268,10 @@ MainFrame.BackgroundColor3 = Color3.fromRGB(22, 22, 28)
 MainFrame.BorderSizePixel = 0
 MainFrame.ClipsDescendants = true
 MainFrame.Visible = false
+MainFrame.Active = true -- Prevent camera dragging
 MainFrame.Parent = ScreenGui
 
+local currentUIPos = UDim2.new(0.5, -155, 0.5, -205)
 local MainScale = Instance.new("UIScale", MainFrame)
 MainScale.Scale = 0
 local MainCorner = Instance.new("UICorner") MainCorner.CornerRadius = UDim.new(0, 10) MainCorner.Parent = MainFrame
@@ -266,6 +280,7 @@ applyThemeOutline(MainFrame)
 local TitleBar = Instance.new("Frame")
 TitleBar.Size = UDim2.new(1, 0, 0, 40)
 TitleBar.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+TitleBar.Active = true
 TitleBar.Parent = MainFrame
 local TitleCorner = Instance.new("UICorner") TitleCorner.CornerRadius = UDim.new(0, 10) TitleCorner.Parent = TitleBar
 
@@ -274,6 +289,7 @@ TabBar.Size = UDim2.new(1, 0, 0, 30)
 TabBar.Position = UDim2.new(0, 0, 0, 40)
 TabBar.BackgroundColor3 = Color3.fromRGB(26, 26, 34)
 TabBar.BorderSizePixel = 0
+TabBar.Active = true
 TabBar.Parent = MainFrame
 
 local FeaturesTabBtn = Instance.new("TextButton")
@@ -302,7 +318,7 @@ local TitleText = Instance.new("TextLabel")
 TitleText.Size = UDim2.new(1, -40, 1, 0)
 TitleText.Position = UDim2.new(0, 12, 0, 0)
 TitleText.BackgroundTransparency = 1
-TitleText.Text = "eynz Hub | Mobile V2.5"
+TitleText.Text = "eynz Hub | Mobile V2.6"
 TitleText.TextColor3 = Color3.fromRGB(255, 255, 255)
 TitleText.TextSize = 16
 TitleText.Font = Enum.Font.SourceSansBold
@@ -320,16 +336,24 @@ CloseBtn.Font = Enum.Font.SourceSansBold
 CloseBtn.Parent = TitleBar
 
 local function closeUI()
-    local tw = TweenService:Create(MainScale, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Scale = 0})
-    tw:Play()
-    task.delay(0.25, function()
+    local targetPos = UDim2.new(currentUIPos.X.Scale, currentUIPos.X.Offset, currentUIPos.Y.Scale, currentUIPos.Y.Offset + 60)
+    
+    TweenService:Create(MainScale, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Scale = 0}):Play()
+    TweenService:Create(MainFrame, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Rotation = 12, Position = targetPos}):Play()
+    
+    task.delay(0.35, function()
         if MainScale.Scale == 0 then MainFrame.Visible = false end
     end)
 end
 
 local function openUI()
     MainFrame.Visible = true
-    TweenService:Create(MainScale, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Scale = currentUIScale}):Play()
+    MainScale.Scale = 0
+    MainFrame.Rotation = -15
+    MainFrame.Position = UDim2.new(currentUIPos.X.Scale, currentUIPos.X.Offset, currentUIPos.Y.Scale, currentUIPos.Y.Offset + 60)
+    
+    TweenService:Create(MainScale, TweenInfo.new(0.5, Enum.EasingStyle.Elastic, Enum.EasingDirection.Out), {Scale = currentUIScale}):Play()
+    TweenService:Create(MainFrame, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Rotation = 0, Position = currentUIPos}):Play()
 end
 
 CloseBtn.MouseButton1Click:Connect(closeUI)
@@ -366,6 +390,7 @@ local function makeDraggable(frame, dragHandle, scaleObj)
                 startPos.X.Scale, startPos.X.Offset + (delta.X / scale), 
                 startPos.Y.Scale, startPos.Y.Offset + (delta.Y / scale)
             )
+            if frame == MainFrame then currentUIPos = frame.Position end
         end
     end))
 end
@@ -381,6 +406,7 @@ local function createScrollFrame()
     Scroll.ScrollBarThickness = 3
     Scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
     Scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    Scroll.Active = true
     Scroll.Parent = MainFrame
     
     local Padding = Instance.new("UIPadding")
@@ -558,6 +584,7 @@ local function createExpandableToggle(textKey, parent, defaultState, mainCallbac
     local ExpCorner = Instance.new("UICorner") ExpCorner.CornerRadius = UDim.new(0, 6) ExpCorner.Parent = ExpandBtn
     applyThemeOutline(ExpandBtn)
     registerDynamicText(ExpandBtn)
+    table.insert(ThemeSecondaryBtns, ExpandBtn)
 
     local Button = Instance.new("TextButton")
     Button.Size = UDim2.new(0, 50, 0, 24)
@@ -710,6 +737,7 @@ local function createExpandableToggleWithInput(textKey, inputKey, parent, defaul
     local ExpCorner = Instance.new("UICorner") ExpCorner.CornerRadius = UDim.new(0, 6) ExpCorner.Parent = ExpandBtn
     applyThemeOutline(ExpandBtn)
     registerDynamicText(ExpandBtn)
+    table.insert(ThemeSecondaryBtns, ExpandBtn)
 
     local Button = Instance.new("TextButton")
     Button.Size = UDim2.new(0, 50, 0, 24)
@@ -770,7 +798,7 @@ local function createExpandableToggleWithInput(textKey, inputKey, parent, defaul
     InputBox.Parent = SubFrame
     local BoxCorner = Instance.new("UICorner") BoxCorner.CornerRadius = UDim.new(0, 6) BoxCorner.Parent = InputBox
     applyThemeOutline(InputBox)
-    registerDynamicText(InputBox)
+    table.insert(ThemeInputBoxes, InputBox)
 
     InputBox.FocusLost:Connect(function()
         local val = tonumber(InputBox.Text)
@@ -947,6 +975,15 @@ local function setPolandMode(state)
         for _, frm in ipairs(ThemeSubFrames) do
             if frm and frm.Parent then frm.BackgroundColor3 = Color3.fromRGB(220, 220, 220) end
         end
+        for _, box in ipairs(ThemeInputBoxes) do
+            if box and box.Parent then box.BackgroundColor3 = Color3.fromRGB(220, 220, 220) box.TextColor3 = Color3.fromRGB(20, 20, 20) end
+        end
+        for _, btn in ipairs(ThemeSecondaryBtns) do
+            if btn and btn.Parent then btn.BackgroundColor3 = Color3.fromRGB(210, 210, 210) btn.TextColor3 = Color3.fromRGB(20, 20, 20) end
+        end
+        for _, pBtn in ipairs(ThemePresetBtns) do
+            if pBtn and pBtn.Parent then pBtn.BackgroundColor3 = Color3.fromRGB(230, 230, 230) end
+        end
         for _, txt in ipairs(ThemeTexts) do
             if txt and txt.Parent and txt.Name ~= "eynzToggleBtn" and txt.Name ~= "TitleText" then 
                 txt.TextColor3 = Color3.fromRGB(255, 0, 0) 
@@ -984,6 +1021,15 @@ local function setPolandMode(state)
         end
         for _, frm in ipairs(ThemeSubFrames) do
             if frm and frm.Parent then frm.BackgroundColor3 = Color3.fromRGB(35, 35, 45) end
+        end
+        for _, box in ipairs(ThemeInputBoxes) do
+            if box and box.Parent then box.BackgroundColor3 = Color3.fromRGB(20, 20, 26) box.TextColor3 = Color3.fromRGB(255, 255, 255) end
+        end
+        for _, btn in ipairs(ThemeSecondaryBtns) do
+            if btn and btn.Parent then btn.BackgroundColor3 = Color3.fromRGB(40, 40, 50) btn.TextColor3 = Color3.fromRGB(255, 255, 255) end
+        end
+        for _, pBtn in ipairs(ThemePresetBtns) do
+            if pBtn and pBtn.Parent then pBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 50) end
         end
         for _, txt in ipairs(ThemeTexts) do
             if txt and txt.Parent and txt.Name ~= "eynzToggleBtn" and txt.Name ~= "TitleText" then 
@@ -1062,6 +1108,7 @@ local function createColorPresetsRow(parent)
     local ExpCorner = Instance.new("UICorner") ExpCorner.CornerRadius = UDim.new(0, 6) ExpCorner.Parent = ExpandBtn
     applyThemeOutline(ExpandBtn)
     registerDynamicText(ExpandBtn)
+    table.insert(ThemeSecondaryBtns, ExpandBtn)
 
     local SubContainer = Instance.new("Frame")
     SubContainer.Size = UDim2.new(1, 0, 0, 0)
@@ -1082,27 +1129,28 @@ local function createColorPresetsRow(parent)
     local SubPad = Instance.new("UIPadding") SubPad.PaddingTop = UDim.new(0, 6) SubPad.PaddingBottom = UDim.new(0, 6) SubPad.Parent = SubContainer
 
     local colors = {
-        {name = "Purple (Default)", rgb = Color3.fromRGB(138, 43, 226)},
-        {name = "Orange", rgb = Color3.fromRGB(255, 128, 0)},
-        {name = "Brown", rgb = Color3.fromRGB(139, 69, 19)},
-        {name = "Yellow", rgb = Color3.fromRGB(255, 255, 0)},
-        {name = "Blue", rgb = Color3.fromRGB(0, 100, 255)},
-        {name = "Red", rgb = Color3.fromRGB(255, 50, 50)},
-        {name = "Green", rgb = Color3.fromRGB(50, 255, 50)},
-        {name = "White", rgb = Color3.fromRGB(255, 255, 255)}
+        {key = "Purple (Default)", rgb = Color3.fromRGB(138, 43, 226)},
+        {key = "Orange", rgb = Color3.fromRGB(255, 128, 0)},
+        {key = "Brown", rgb = Color3.fromRGB(139, 69, 19)},
+        {key = "Yellow", rgb = Color3.fromRGB(255, 255, 0)},
+        {key = "Blue", rgb = Color3.fromRGB(0, 100, 255)},
+        {key = "Red", rgb = Color3.fromRGB(255, 50, 50)},
+        {key = "Green", rgb = Color3.fromRGB(50, 255, 50)},
+        {key = "White", rgb = Color3.fromRGB(255, 255, 255)}
     }
     
     for _, clr in ipairs(colors) do
         local Btn = Instance.new("TextButton")
         Btn.Size = UDim2.new(1, -12, 0, 26)
         Btn.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
-        Btn.Text = clr.name
         Btn.TextColor3 = clr.rgb
         Btn.Font = Enum.Font.SourceSansBold
         Btn.TextSize = 13
         Btn.Parent = SubContainer
         local BtnCorner = Instance.new("UICorner") BtnCorner.CornerRadius = UDim.new(0, 6) BtnCorner.Parent = Btn
         applyThemeOutline(Btn)
+        addTranslatable(Btn, clr.key)
+        table.insert(ThemePresetBtns, Btn)
         Btn.MouseButton1Click:Connect(function() updateThemeColor(clr.rgb) end)
     end
     
@@ -1158,7 +1206,7 @@ local function createColorPresetsRow(parent)
     InputBox.Parent = CustomRGBRow
     local BoxCorner = Instance.new("UICorner") BoxCorner.CornerRadius = UDim.new(0, 6) BoxCorner.Parent = InputBox
     applyThemeOutline(InputBox)
-    registerDynamicText(InputBox)
+    table.insert(ThemeInputBoxes, InputBox)
     
     InputBox.FocusLost:Connect(function()
         local r, g, b = InputBox.Text:match("(%d+)%s*,%s*(%d+)%s*,%s*(%d+)")
@@ -1219,9 +1267,150 @@ local function createInputRow(labelText, parent, defaultVal, callback)
     InputBox.Parent = RowFrame
     local BoxCorner = Instance.new("UICorner") BoxCorner.CornerRadius = UDim.new(0, 6) BoxCorner.Parent = InputBox
     applyThemeOutline(InputBox)
-    registerDynamicText(InputBox)
+    table.insert(ThemeInputBoxes, InputBox)
 
     InputBox.FocusLost:Connect(function() callback(InputBox.Text) end)
+end
+
+local function createPlayerCycler(parent)
+    local RowFrame = Instance.new("Frame")
+    RowFrame.Size = UDim2.new(1, 0, 0, 50)
+    RowFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+    RowFrame.Parent = parent
+    table.insert(ThemeFrames, RowFrame)
+    applyThemeOutline(RowFrame)
+    local FrameCorner = Instance.new("UICorner") FrameCorner.CornerRadius = UDim.new(0, 6) FrameCorner.Parent = RowFrame
+
+    local Label = Instance.new("TextLabel")
+    Label.Size = UDim2.new(1, 0, 0, 16)
+    Label.Position = UDim2.new(0, 10, 0, 4)
+    Label.BackgroundTransparency = 1
+    Label.TextColor3 = Color3.fromRGB(240, 240, 240)
+    Label.TextSize = 13
+    Label.Font = Enum.Font.SourceSansSemibold
+    Label.TextXAlignment = Enum.TextXAlignment.Left
+    Label.Parent = RowFrame
+    addTranslatable(Label, "Teleport to Player")
+    registerDynamicText(Label)
+
+    local CyclerContainer = Instance.new("Frame")
+    CyclerContainer.Size = UDim2.new(1, -20, 0, 26)
+    CyclerContainer.Position = UDim2.new(0, 10, 0, 20)
+    CyclerContainer.BackgroundTransparency = 1
+    CyclerContainer.Parent = RowFrame
+
+    local PrevBtn = Instance.new("TextButton")
+    PrevBtn.Size = UDim2.new(0, 26, 1, 0)
+    PrevBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+    PrevBtn.Text = "<"
+    PrevBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    PrevBtn.Font = Enum.Font.SourceSansBold
+    PrevBtn.Parent = CyclerContainer
+    local PBtnCorner = Instance.new("UICorner") PBtnCorner.CornerRadius = UDim.new(0, 4) PBtnCorner.Parent = PrevBtn
+    table.insert(ThemeSecondaryBtns, PrevBtn)
+
+    local NextBtn = Instance.new("TextButton")
+    NextBtn.Size = UDim2.new(0, 26, 1, 0)
+    NextBtn.Position = UDim2.new(1, -70, 0, 0)
+    NextBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+    NextBtn.Text = ">"
+    NextBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    NextBtn.Font = Enum.Font.SourceSansBold
+    NextBtn.Parent = CyclerContainer
+    local NBtnCorner = Instance.new("UICorner") NBtnCorner.CornerRadius = UDim.new(0, 4) NBtnCorner.Parent = NextBtn
+    table.insert(ThemeSecondaryBtns, NextBtn)
+
+    local TPBtn = Instance.new("TextButton")
+    TPBtn.Size = UDim2.new(0, 40, 1, 0)
+    TPBtn.Position = UDim2.new(1, -40, 0, 0)
+    TPBtn.BackgroundColor3 = ThemeColor
+    TPBtn.Text = "TP"
+    TPBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    TPBtn.Font = Enum.Font.SourceSansBold
+    TPBtn.Parent = CyclerContainer
+    local TPBtnCorner = Instance.new("UICorner") TPBtnCorner.CornerRadius = UDim.new(0, 4) TPBtnCorner.Parent = TPBtn
+    addTranslatable(TPBtn, "TP")
+    table.insert(ThemeUpdaters, function(newColor) TPBtn.BackgroundColor3 = newColor end)
+
+    local PlayerIcon = Instance.new("ImageLabel")
+    PlayerIcon.Size = UDim2.new(0, 20, 0, 20)
+    PlayerIcon.Position = UDim2.new(0, 32, 0.5, -10)
+    PlayerIcon.BackgroundTransparency = 1
+    PlayerIcon.Image = ""
+    PlayerIcon.Parent = CyclerContainer
+    local IconCorner = Instance.new("UICorner") IconCorner.CornerRadius = UDim.new(1, 0) IconCorner.Parent = PlayerIcon
+
+    local PlayerNameLbl = Instance.new("TextLabel")
+    PlayerNameLbl.Size = UDim2.new(1, -135, 1, 0)
+    PlayerNameLbl.Position = UDim2.new(0, 58, 0, 0)
+    PlayerNameLbl.BackgroundTransparency = 1
+    PlayerNameLbl.Text = "No Players"
+    PlayerNameLbl.TextColor3 = Color3.fromRGB(255, 255, 255)
+    PlayerNameLbl.TextSize = 14
+    PlayerNameLbl.Font = Enum.Font.SourceSansBold
+    PlayerNameLbl.TextXAlignment = Enum.TextXAlignment.Left
+    PlayerNameLbl.TextTruncate = Enum.TextTruncate.AtEnd
+    PlayerNameLbl.Parent = CyclerContainer
+    registerDynamicText(PlayerNameLbl)
+    
+    local validPlayers = {}
+    local currentIndex = 1
+
+    local function updateDisplay()
+        validPlayers = {}
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= LocalPlayer then table.insert(validPlayers, p) end
+        end
+
+        if #validPlayers == 0 then
+            PlayerNameLbl.Text = getTranslation("No Players")
+            PlayerIcon.Image = ""
+            return
+        end
+
+        if currentIndex > #validPlayers then currentIndex = 1 end
+        if currentIndex < 1 then currentIndex = #validPlayers end
+
+        local selected = validPlayers[currentIndex]
+        PlayerNameLbl.Text = selected.DisplayName .. " (@" .. selected.Name .. ")"
+        
+        task.spawn(function()
+            local content, isReady = Players:GetUserThumbnailAsync(selected.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size48x48)
+            if isReady and validPlayers[currentIndex] == selected then
+                PlayerIcon.Image = content
+            end
+        end)
+    end
+
+    PrevBtn.MouseButton1Click:Connect(function()
+        if #validPlayers > 0 then
+            currentIndex = currentIndex - 1
+            updateDisplay()
+        end
+    end)
+
+    NextBtn.MouseButton1Click:Connect(function()
+        if #validPlayers > 0 then
+            currentIndex = currentIndex + 1
+            updateDisplay()
+        end
+    end)
+
+    TPBtn.MouseButton1Click:Connect(function()
+        if #validPlayers > 0 and validPlayers[currentIndex] then
+            local targetPlayer = validPlayers[currentIndex]
+            if targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                    LocalPlayer.Character.HumanoidRootPart.CFrame = targetPlayer.Character.HumanoidRootPart.CFrame
+                end
+            end
+        end
+    end)
+
+    table.insert(TranslationUpdaters, updateDisplay)
+    table.insert(ActiveConnections, Players.PlayerAdded:Connect(updateDisplay))
+    table.insert(ActiveConnections, Players.PlayerRemoving:Connect(updateDisplay))
+    updateDisplay()
 end
 
 local function createAboutCard(parent)
@@ -1247,7 +1436,7 @@ local function createAboutCard(parent)
     Lbl2.Size = UDim2.new(1, 0, 0, 30)
     Lbl2.Position = UDim2.new(0, 0, 0, 25)
     Lbl2.BackgroundTransparency = 1
-    Lbl2.Text = "Version 2.5"
+    Lbl2.Text = "Version 2.6"
     Lbl2.TextColor3 = Color3.fromRGB(200, 200, 200)
     Lbl2.Font = Enum.Font.SourceSansSemibold
     Lbl2.TextSize = 14
@@ -1290,6 +1479,7 @@ local function createDetailsExpandable(parent)
     local ExpCorner = Instance.new("UICorner") ExpCorner.CornerRadius = UDim.new(0, 6) ExpCorner.Parent = ExpandBtn
     applyThemeOutline(ExpandBtn)
     registerDynamicText(ExpandBtn)
+    table.insert(ThemeSecondaryBtns, ExpandBtn)
 
     local SubContainer = Instance.new("Frame")
     SubContainer.Size = UDim2.new(1, 0, 0, 0)
@@ -1450,6 +1640,9 @@ table.insert(ActiveConnections, RunService.Stepped:Connect(function()
     end
 end))
 
+-- TELEPORT TO PLAYER
+createPlayerCycler(FeaturesScroll)
+
 -- INSTANT PROMPT & REACH
 local instantPromptEnabled = false
 local promptReachValue = 10
@@ -1534,8 +1727,28 @@ end
 -- ESP SYSTEM
 local playerEspEnabled, playerNamesEnabled = false, false
 local npcEspEnabled, npcNamesEnabled = false, false
-local playerESPData, activeNPCs = {}, {}
-local npcDescendantConn, npcCleanLoop
+local interactableEspEnabled, interactableNamesEnabled = false, false
+
+local playerESPData, activeNPCs, activeInteractables = {}, {}, {}
+local npcDescendantConn, interactableDescendantConn
+local npcCleanLoop, interactableCleanLoop
+
+local function getESPAdornee(obj)
+    if obj:IsA("Tool") then
+        if obj.Parent and (Players:GetPlayerFromCharacter(obj.Parent) or obj.Parent:FindFirstChildOfClass("Humanoid")) then return nil end
+        return obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart") or obj
+    end
+    if obj:IsA("ProximityPrompt") or obj:IsA("ClickDetector") then
+        local parent = obj.Parent
+        if parent then
+            local model = parent:IsA("Model") and parent or parent.Parent
+            if model and model:IsA("Model") and model:FindFirstChildOfClass("Humanoid") then return nil end
+            if parent:IsA("BasePart") then return parent end
+            if parent:IsA("Model") then return parent.PrimaryPart or parent:FindFirstChildWhichIsA("BasePart") or parent end
+        end
+    end
+    return nil
+end
 
 local function applyPlayerESP(player)
     if player == LocalPlayer then return end
@@ -1662,100 +1875,7 @@ createExpandableToggle("NPC ESP", FeaturesScroll, false, function(state)
     end
 end, {{ text = "Show Names", callback = function(state) npcNamesEnabled = state refreshAllNPCsESP() end }})
 
-
--- Rewritten ITEM ESP & INTERACTABLES ESP
-local itemEspEnabled, itemNamesEnabled = false, false
-local interactableEspEnabled, interactableNamesEnabled = false, false
-
-local activeItems, activeInteractables = {}, {}
-local itemDescendantConn, interactableDescendantConn
-local itemCleanLoop, interactableCleanLoop
-
-local function getESPAdornee(obj)
-    if obj:IsA("Tool") then
-        if obj.Parent and (Players:GetPlayerFromCharacter(obj.Parent) or obj.Parent:FindFirstChildOfClass("Humanoid")) then return nil end
-        return obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart") or obj
-    end
-    if obj:IsA("ProximityPrompt") or obj:IsA("ClickDetector") then
-        local parent = obj.Parent
-        if parent then
-            local model = parent:IsA("Model") and parent or parent.Parent
-            if model and model:IsA("Model") and model:FindFirstChildOfClass("Humanoid") then return nil end
-            if parent:IsA("BasePart") then return parent end
-            if parent:IsA("Model") then return parent.PrimaryPart or parent:FindFirstChildWhichIsA("BasePart") or parent end
-        end
-    end
-    return nil
-end
-
-local function applyItemVisuals(itemObj)
-    if not activeItems[itemObj] then activeItems[itemObj] = {} end
-    local data = activeItems[itemObj]
-    local adornee = getESPAdornee(itemObj)
-    
-    if itemEspEnabled and adornee then
-        if not data.Highlight then
-            local hl = Instance.new("Highlight")
-            hl.FillColor = Color3.fromRGB(0, 255, 128) -- Green for Pickable Items
-            hl.FillTransparency = 0.5
-            hl.OutlineColor = Color3.new(1,1,1)
-            hl.Adornee = adornee
-            hl.Parent = adornee
-            data.Highlight = hl
-        else
-            data.Highlight.Adornee = adornee
-            data.Highlight.Parent = adornee
-        end
-        
-        if itemNamesEnabled and not data.NameTag then
-            local bg = createNameTag(itemObj.Name, Color3.fromRGB(0, 255, 128))
-            bg.Adornee = adornee
-            bg.Parent = adornee
-            data.NameTag = bg
-        end
-    end
-    
-    if not itemEspEnabled or not adornee then
-        if data.Highlight then data.Highlight:Destroy(); data.Highlight = nil end
-        if data.NameTag then data.NameTag:Destroy(); data.NameTag = nil end
-    else
-        if not itemNamesEnabled and data.NameTag then data.NameTag:Destroy(); data.NameTag = nil end
-    end
-end
-
-local function refreshAllItemsESP() for item, _ in pairs(activeItems) do applyItemVisuals(item) end end
-
-local function toggleItemESP()
-    if itemEspEnabled then
-        for _, obj in pairs(workspace:GetDescendants()) do
-            if obj:IsA("Tool") then activeItems[obj] = {}; applyItemVisuals(obj) end
-        end
-        itemDescendantConn = workspace.DescendantAdded:Connect(function(obj)
-            task.wait(0.1)
-            if obj:IsA("Tool") then activeItems[obj] = {}; applyItemVisuals(obj) end
-        end)
-        if not table.find(ActiveConnections, itemDescendantConn) then table.insert(ActiveConnections, itemDescendantConn) end
-        
-        itemCleanLoop = task.spawn(function()
-            while task.wait(2) do
-                for itemObj, data in pairs(activeItems) do
-                    if not itemObj.Parent or not getESPAdornee(itemObj) then
-                        if data.Highlight then data.Highlight:Destroy() end
-                        if data.NameTag then data.NameTag:Destroy() end
-                        activeItems[itemObj] = nil
-                    else
-                        applyItemVisuals(itemObj)
-                    end
-                end
-            end
-        end)
-    else
-        if itemDescendantConn then itemDescendantConn:Disconnect(); itemDescendantConn = nil end
-        if itemCleanLoop then task.cancel(itemCleanLoop); itemCleanLoop = nil end
-        refreshAllItemsESP(); activeItems = {}
-    end
-end
-
+-- INTERACTABLES ESP
 local function applyInteractableVisuals(intObj)
     if not activeInteractables[intObj] then activeInteractables[intObj] = {} end
     local data = activeInteractables[intObj]
@@ -1835,12 +1955,10 @@ local function toggleInteractablesESP()
     end
 end
 
-createExpandableToggle("Item ESP", FeaturesScroll, false, function(state)
-    itemEspEnabled = state
-    toggleItemESP()
+createExpandableToggle("Interactables ESP", FeaturesScroll, false, function(state)
+    interactableEspEnabled = state
+    toggleInteractablesESP()
 end, {
-    { text = "Show Item Names", callback = function(state) itemNamesEnabled = state refreshAllItemsESP() end },
-    { text = "Interactables ESP", callback = function(state) interactableEspEnabled = state toggleInteractablesESP() end },
     { text = "Show Int. Names", callback = function(state) interactableNamesEnabled = state refreshAllInteractablesESP() end }
 })
 
@@ -1883,7 +2001,6 @@ local function DestroyHub()
     
     playerEspEnabled = false; refreshAllPlayersESP()
     npcEspEnabled = false; refreshAllNPCsESP()
-    itemEspEnabled = false; toggleItemESP()
     interactableEspEnabled = false; toggleInteractablesESP()
 
     for _, connection in ipairs(ActiveConnections) do
