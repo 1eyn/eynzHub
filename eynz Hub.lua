@@ -1,13 +1,11 @@
 --[[
     ==================================================
-    eynz Hub - Mobile Edition (Ultimate V2.6)
-    - Replaced Item ESP with Interactables ESP
-    - Added Player Teleport with Avatar Icons
-    - UI Opening/Closing Elastic Rotation Tweens
-    - Fixed Mobile UI Dragging Camera Pan Bug
-    - Fixed Poland Mode Sub-Elements & Input Colors
-    - Fixed Color Presets Missing Translations
-    - Version Bumps & Optimizations
+    eynz Hub - Mobile Edition (Ultimate V2.7)
+    - Redesigned Player Teleport with Search List
+    - Added Display Name substring search filter
+    - Replaced UI opening animation (Clean & Simple)
+    - Transformed Launcher into a cool Logo Icon
+    - Updated Version Bumps & Details Changelog
     ==================================================
 --]]
 
@@ -43,21 +41,19 @@ local statefulButtons = {}
 local TranslationUpdaters = {}
 
 local ChangelogTextEN = [[
-• Added Player Teleport feature with avatars
-• Replaced Item ESP with Interactables ESP
-• Made UI opening animation cooler (elastic fly-in)
-• Fixed UI camera dragging bug on Mobile
-• Fixed Poland Mode colors for textboxes/buttons
-• Added translations for color presets
+• Redesigned Player Teleport with Search & Scroll List
+• Reverted to simpler, clean UI animations
+• Added new stylish Launcher Logo Icon
+• Teleport search now sorts by Display Name prefix
+• Version 2.7 updates & general optimizations
 ]]
 
 local ChangelogTextPL = [[
-• Dodano Teleport do Graczy z awatarami
-• Zastąpiono ESP Rzeczy przez ESP Interakcji
-• Lepsza, bardziej elastyczna animacja otwierania UI
-• Naprawiono błąd obracania kamery przy przesuwaniu UI
-• Poprawiono kolory Trybu Polskiego dla przycisków
-• Dodano tłumaczenia dla nazw kolorów
+• Nowy Teleport do Graczy z Listą i Wyszukiwarką
+• Prostsze i czystsze animacje startowe UI
+• Nowe, stylowe logo launchera w formie ikony
+• Szukanie graczy po pierwszych literach (Display Name)
+• Aktualizacja do V2.7 i optymalizacje
 ]]
 
 local Translations = {
@@ -71,7 +67,9 @@ local Translations = {
     ["Noclip"] = {EN = "Noclip", PL = "Przenikanie"},
     ["Teleport to Player"] = {EN = "Teleport to Player", PL = "Teleportuj do Gracza"},
     ["TP"] = {EN = "TP", PL = "TP"},
-    ["No Players"] = {EN = "No Players", PL = "Brak Graczy"},
+    ["Selected: None"] = {EN = "Selected: None", PL = "Wybrano: Brak"},
+    ["Search Display Name..."] = {EN = "Search Display Name...", PL = "Szukaj nazwy wyświetlanej..."},
+    ["The Teleport Search Bar uses Display Names"] = {EN = "The Teleport Search Bar uses Display Names", PL = "Wyszukiwarka Teleportu używa Nazw Wyświetlanych"},
     ["Instant Prompt"] = {EN = "Instant Prompt", PL = "Szybka Interakcja"},
     ["Prompt Reach"] = {EN = "Prompt Reach", PL = "Zasięg Interakcji"},
     ["Max 100 studs"] = {EN = "Max 100 studs", PL = "Maksymalnie 100 studów"},
@@ -244,21 +242,23 @@ ScreenGui.Name = "eynzHubMobileGUI"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = ParentGui
 
+-- New Stylized Launcher Logo
 local ToggleBtn = Instance.new("TextButton")
 ToggleBtn.Name = "eynzToggleBtn"
-ToggleBtn.Size = UDim2.new(0, 100, 0, 35)
+ToggleBtn.Size = UDim2.new(0, 46, 0, 46)
 ToggleBtn.Position = UDim2.new(0, 15, 0, 15)
 ToggleBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
-ToggleBtn.Text = "eynz Hub"
-ToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-ToggleBtn.TextSize = 14
-ToggleBtn.Font = Enum.Font.SourceSansBold
+ToggleBtn.Text = "e"
+ToggleBtn.TextColor3 = ThemeColor
+ToggleBtn.TextSize = 28
+ToggleBtn.Font = Enum.Font.GothamBlack
 ToggleBtn.Active = true -- Prevent camera dragging
 ToggleBtn.Parent = ScreenGui
 
 local LauncherScale = Instance.new("UIScale", ToggleBtn)
-local ToggleCorner = Instance.new("UICorner") ToggleCorner.CornerRadius = UDim.new(0, 8) ToggleCorner.Parent = ToggleBtn
-applyThemeOutline(ToggleBtn)
+local ToggleCorner = Instance.new("UICorner") ToggleCorner.CornerRadius = UDim.new(1, 0) ToggleCorner.Parent = ToggleBtn
+applyThemeOutline(ToggleBtn, 1.5)
+table.insert(ThemeTexts, ToggleBtn)
 
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
@@ -318,7 +318,7 @@ local TitleText = Instance.new("TextLabel")
 TitleText.Size = UDim2.new(1, -40, 1, 0)
 TitleText.Position = UDim2.new(0, 12, 0, 0)
 TitleText.BackgroundTransparency = 1
-TitleText.Text = "eynz Hub | Mobile V2.6"
+TitleText.Text = "eynz Hub | Mobile V2.7"
 TitleText.TextColor3 = Color3.fromRGB(255, 255, 255)
 TitleText.TextSize = 16
 TitleText.Font = Enum.Font.SourceSansBold
@@ -335,13 +335,12 @@ CloseBtn.TextSize = 16
 CloseBtn.Font = Enum.Font.SourceSansBold
 CloseBtn.Parent = TitleBar
 
+-- Reverted to simple and clean UI Animations
 local function closeUI()
-    local targetPos = UDim2.new(currentUIPos.X.Scale, currentUIPos.X.Offset, currentUIPos.Y.Scale, currentUIPos.Y.Offset + 60)
+    TweenService:Create(MainScale, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {Scale = 0}):Play()
+    TweenService:Create(MainFrame, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {Position = UDim2.new(currentUIPos.X.Scale, currentUIPos.X.Offset, currentUIPos.Y.Scale, currentUIPos.Y.Offset + 15)}):Play()
     
-    TweenService:Create(MainScale, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Scale = 0}):Play()
-    TweenService:Create(MainFrame, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Rotation = 12, Position = targetPos}):Play()
-    
-    task.delay(0.35, function()
+    task.delay(0.25, function()
         if MainScale.Scale == 0 then MainFrame.Visible = false end
     end)
 end
@@ -349,11 +348,10 @@ end
 local function openUI()
     MainFrame.Visible = true
     MainScale.Scale = 0
-    MainFrame.Rotation = -15
-    MainFrame.Position = UDim2.new(currentUIPos.X.Scale, currentUIPos.X.Offset, currentUIPos.Y.Scale, currentUIPos.Y.Offset + 60)
+    MainFrame.Position = UDim2.new(currentUIPos.X.Scale, currentUIPos.X.Offset, currentUIPos.Y.Scale, currentUIPos.Y.Offset + 15)
     
-    TweenService:Create(MainScale, TweenInfo.new(0.5, Enum.EasingStyle.Elastic, Enum.EasingDirection.Out), {Scale = currentUIScale}):Play()
-    TweenService:Create(MainFrame, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Rotation = 0, Position = currentUIPos}):Play()
+    TweenService:Create(MainScale, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Scale = currentUIScale}):Play()
+    TweenService:Create(MainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Position = currentUIPos}):Play()
 end
 
 CloseBtn.MouseButton1Click:Connect(closeUI)
@@ -985,7 +983,7 @@ local function setPolandMode(state)
             if pBtn and pBtn.Parent then pBtn.BackgroundColor3 = Color3.fromRGB(230, 230, 230) end
         end
         for _, txt in ipairs(ThemeTexts) do
-            if txt and txt.Parent and txt.Name ~= "eynzToggleBtn" and txt.Name ~= "TitleText" then 
+            if txt and txt.Parent and txt.Name ~= "TitleText" then 
                 txt.TextColor3 = Color3.fromRGB(255, 0, 0) 
             end
         end
@@ -1007,7 +1005,7 @@ local function setPolandMode(state)
         TitleBar.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
         TabBar.BackgroundColor3 = Color3.fromRGB(26, 26, 34)
         ToggleBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
-        ToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        ToggleBtn.TextColor3 = ThemeColor
         TitleText.TextColor3 = Color3.fromRGB(255, 255, 255)
         FeaturesTabBtn.TextColor3 = currentTab == FeaturesScroll and ThemeColor or Color3.fromRGB(150, 150, 150)
         SettingsTabBtn.TextColor3 = currentTab == SettingsScroll and ThemeColor or Color3.fromRGB(150, 150, 150)
@@ -1032,7 +1030,7 @@ local function setPolandMode(state)
             if pBtn and pBtn.Parent then pBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 50) end
         end
         for _, txt in ipairs(ThemeTexts) do
-            if txt and txt.Parent and txt.Name ~= "eynzToggleBtn" and txt.Name ~= "TitleText" then 
+            if txt and txt.Parent and txt.Name ~= "TitleText" then 
                 txt.TextColor3 = ThemeColor 
             end
         end
@@ -1063,7 +1061,7 @@ local function updateThemeColor(color)
         if stroke and stroke.Parent then TweenService:Create(stroke, TweenInfo.new(0.3), {Color = color}):Play() end
     end
     for _, txt in ipairs(ThemeTexts) do
-        if txt and txt.Parent and txt.Name ~= "eynzToggleBtn" and txt.Name ~= "TitleText" then 
+        if txt and txt.Parent and txt.Name ~= "TitleText" then 
             TweenService:Create(txt, TweenInfo.new(0.3), {TextColor3 = color}):Play() 
         end
     end
@@ -1272,145 +1270,223 @@ local function createInputRow(labelText, parent, defaultVal, callback)
     InputBox.FocusLost:Connect(function() callback(InputBox.Text) end)
 end
 
-local function createPlayerCycler(parent)
-    local RowFrame = Instance.new("Frame")
-    RowFrame.Size = UDim2.new(1, 0, 0, 50)
-    RowFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
-    RowFrame.Parent = parent
-    table.insert(ThemeFrames, RowFrame)
-    applyThemeOutline(RowFrame)
-    local FrameCorner = Instance.new("UICorner") FrameCorner.CornerRadius = UDim.new(0, 6) FrameCorner.Parent = RowFrame
+-- NEW SCROLLABLE & SEARCHABLE PLAYER TELEPORT LIST
+local function createPlayerTeleportList(parent)
+    local expanded = false
+    local selectedPlayer = nil
+    
+    local Container = Instance.new("Frame")
+    Container.Size = UDim2.new(1, 0, 0, 65)
+    Container.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+    Container.Parent = parent
+    table.insert(ThemeFrames, Container)
+    applyThemeOutline(Container)
+    local ContainerCorner = Instance.new("UICorner") ContainerCorner.CornerRadius = UDim.new(0, 6) ContainerCorner.Parent = Container
 
-    local Label = Instance.new("TextLabel")
-    Label.Size = UDim2.new(1, 0, 0, 16)
-    Label.Position = UDim2.new(0, 10, 0, 4)
-    Label.BackgroundTransparency = 1
-    Label.TextColor3 = Color3.fromRGB(240, 240, 240)
-    Label.TextSize = 13
-    Label.Font = Enum.Font.SourceSansSemibold
-    Label.TextXAlignment = Enum.TextXAlignment.Left
-    Label.Parent = RowFrame
-    addTranslatable(Label, "Teleport to Player")
-    registerDynamicText(Label)
+    local TopLabel = Instance.new("TextLabel")
+    TopLabel.Size = UDim2.new(0, 110, 0, 20)
+    TopLabel.Position = UDim2.new(0, 10, 0, 5)
+    TopLabel.BackgroundTransparency = 1
+    TopLabel.TextColor3 = Color3.fromRGB(240, 240, 240)
+    TopLabel.TextSize = 14
+    TopLabel.Font = Enum.Font.SourceSansSemibold
+    TopLabel.TextXAlignment = Enum.TextXAlignment.Left
+    TopLabel.Parent = Container
+    addTranslatable(TopLabel, "Teleport to Player")
+    registerDynamicText(TopLabel)
 
-    local CyclerContainer = Instance.new("Frame")
-    CyclerContainer.Size = UDim2.new(1, -20, 0, 26)
-    CyclerContainer.Position = UDim2.new(0, 10, 0, 20)
-    CyclerContainer.BackgroundTransparency = 1
-    CyclerContainer.Parent = RowFrame
+    local InfoBtn = Instance.new("TextButton")
+    InfoBtn.Size = UDim2.new(0, 16, 0, 16)
+    InfoBtn.Position = UDim2.new(0, 125, 0, 7)
+    InfoBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
+    InfoBtn.Text = "ⓘ"
+    InfoBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    InfoBtn.Font = Enum.Font.SourceSansBold
+    InfoBtn.TextSize = 12
+    InfoBtn.Parent = Container
+    local InfoCorner = Instance.new("UICorner") InfoCorner.CornerRadius = UDim.new(1, 0) InfoCorner.Parent = InfoBtn
+    table.insert(ThemeSecondaryBtns, InfoBtn)
 
-    local PrevBtn = Instance.new("TextButton")
-    PrevBtn.Size = UDim2.new(0, 26, 1, 0)
-    PrevBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
-    PrevBtn.Text = "<"
-    PrevBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    PrevBtn.Font = Enum.Font.SourceSansBold
-    PrevBtn.Parent = CyclerContainer
-    local PBtnCorner = Instance.new("UICorner") PBtnCorner.CornerRadius = UDim.new(0, 4) PBtnCorner.Parent = PrevBtn
-    table.insert(ThemeSecondaryBtns, PrevBtn)
+    InfoBtn.MouseButton1Click:Connect(function()
+        ShowNotification(getTranslation("The Teleport Search Bar uses Display Names"))
+    end)
 
-    local NextBtn = Instance.new("TextButton")
-    NextBtn.Size = UDim2.new(0, 26, 1, 0)
-    NextBtn.Position = UDim2.new(1, -70, 0, 0)
-    NextBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
-    NextBtn.Text = ">"
-    NextBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    NextBtn.Font = Enum.Font.SourceSansBold
-    NextBtn.Parent = CyclerContainer
-    local NBtnCorner = Instance.new("UICorner") NBtnCorner.CornerRadius = UDim.new(0, 4) NBtnCorner.Parent = NextBtn
-    table.insert(ThemeSecondaryBtns, NextBtn)
+    local PlayerIcon = Instance.new("ImageLabel")
+    PlayerIcon.Size = UDim2.new(0, 26, 0, 26)
+    PlayerIcon.Position = UDim2.new(0, 10, 0, 32)
+    PlayerIcon.BackgroundTransparency = 1
+    PlayerIcon.Image = ""
+    PlayerIcon.Parent = Container
+    local IconCorner = Instance.new("UICorner") IconCorner.CornerRadius = UDim.new(1, 0) IconCorner.Parent = PlayerIcon
+
+    local SelectedLabel = Instance.new("TextLabel")
+    SelectedLabel.Size = UDim2.new(1, -140, 0, 26)
+    SelectedLabel.Position = UDim2.new(0, 45, 0, 32)
+    SelectedLabel.BackgroundTransparency = 1
+    SelectedLabel.Text = getTranslation("Selected: None")
+    SelectedLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+    SelectedLabel.TextSize = 13
+    SelectedLabel.Font = Enum.Font.SourceSansBold
+    SelectedLabel.TextXAlignment = Enum.TextXAlignment.Left
+    SelectedLabel.TextTruncate = Enum.TextTruncate.AtEnd
+    SelectedLabel.Parent = Container
+    registerDynamicText(SelectedLabel)
 
     local TPBtn = Instance.new("TextButton")
-    TPBtn.Size = UDim2.new(0, 40, 1, 0)
-    TPBtn.Position = UDim2.new(1, -40, 0, 0)
+    TPBtn.Size = UDim2.new(0, 40, 0, 26)
+    TPBtn.Position = UDim2.new(1, -85, 0, 32)
     TPBtn.BackgroundColor3 = ThemeColor
     TPBtn.Text = "TP"
     TPBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     TPBtn.Font = Enum.Font.SourceSansBold
-    TPBtn.Parent = CyclerContainer
+    TPBtn.Parent = Container
     local TPBtnCorner = Instance.new("UICorner") TPBtnCorner.CornerRadius = UDim.new(0, 4) TPBtnCorner.Parent = TPBtn
     addTranslatable(TPBtn, "TP")
     table.insert(ThemeUpdaters, function(newColor) TPBtn.BackgroundColor3 = newColor end)
 
-    local PlayerIcon = Instance.new("ImageLabel")
-    PlayerIcon.Size = UDim2.new(0, 20, 0, 20)
-    PlayerIcon.Position = UDim2.new(0, 32, 0.5, -10)
-    PlayerIcon.BackgroundTransparency = 1
-    PlayerIcon.Image = ""
-    PlayerIcon.Parent = CyclerContainer
-    local IconCorner = Instance.new("UICorner") IconCorner.CornerRadius = UDim.new(1, 0) IconCorner.Parent = PlayerIcon
+    local ExpandBtn = Instance.new("TextButton")
+    ExpandBtn.Size = UDim2.new(0, 26, 0, 26)
+    ExpandBtn.Position = UDim2.new(1, -36, 0, 32)
+    ExpandBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+    ExpandBtn.Text = "▼"
+    ExpandBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    ExpandBtn.Font = Enum.Font.SourceSansBold
+    ExpandBtn.TextSize = 12
+    ExpandBtn.Parent = Container
+    local ExpCorner = Instance.new("UICorner") ExpCorner.CornerRadius = UDim.new(0, 4) ExpCorner.Parent = ExpandBtn
+    applyThemeOutline(ExpandBtn)
+    registerDynamicText(ExpandBtn)
+    table.insert(ThemeSecondaryBtns, ExpandBtn)
 
-    local PlayerNameLbl = Instance.new("TextLabel")
-    PlayerNameLbl.Size = UDim2.new(1, -135, 1, 0)
-    PlayerNameLbl.Position = UDim2.new(0, 58, 0, 0)
-    PlayerNameLbl.BackgroundTransparency = 1
-    PlayerNameLbl.Text = "No Players"
-    PlayerNameLbl.TextColor3 = Color3.fromRGB(255, 255, 255)
-    PlayerNameLbl.TextSize = 14
-    PlayerNameLbl.Font = Enum.Font.SourceSansBold
-    PlayerNameLbl.TextXAlignment = Enum.TextXAlignment.Left
-    PlayerNameLbl.TextTruncate = Enum.TextTruncate.AtEnd
-    PlayerNameLbl.Parent = CyclerContainer
-    registerDynamicText(PlayerNameLbl)
-    
-    local validPlayers = {}
-    local currentIndex = 1
+    local Dropdown = Instance.new("Frame")
+    Dropdown.Size = UDim2.new(1, 0, 0, 0)
+    Dropdown.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+    Dropdown.ClipsDescendants = true
+    Dropdown.Visible = false
+    Dropdown.Parent = parent
+    table.insert(ThemeSubFrames, Dropdown)
+    local DropCorner = Instance.new("UICorner") DropCorner.CornerRadius = UDim.new(0, 6) DropCorner.Parent = Dropdown
+    applyThemeOutline(Dropdown)
 
-    local function updateDisplay()
-        validPlayers = {}
-        for _, p in ipairs(Players:GetPlayers()) do
-            if p ~= LocalPlayer then table.insert(validPlayers, p) end
-        end
+    local SearchBox = Instance.new("TextBox")
+    SearchBox.Size = UDim2.new(1, -20, 0, 26)
+    SearchBox.Position = UDim2.new(0, 10, 0, 10)
+    SearchBox.BackgroundColor3 = Color3.fromRGB(20, 20, 26)
+    SearchBox.Text = ""
+    SearchBox.PlaceholderText = getTranslation("Search Display Name...")
+    SearchBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+    SearchBox.Font = Enum.Font.SourceSans
+    SearchBox.TextSize = 13
+    SearchBox.Parent = Dropdown
+    local SearchBoxCorner = Instance.new("UICorner") SearchBoxCorner.CornerRadius = UDim.new(0, 6) SearchBoxCorner.Parent = SearchBox
+    applyThemeOutline(SearchBox)
+    table.insert(ThemeInputBoxes, SearchBox)
 
-        if #validPlayers == 0 then
-            PlayerNameLbl.Text = getTranslation("No Players")
+    local ListScroll = Instance.new("ScrollingFrame")
+    ListScroll.Size = UDim2.new(1, -20, 1, -50)
+    ListScroll.Position = UDim2.new(0, 10, 0, 45)
+    ListScroll.BackgroundTransparency = 1
+    ListScroll.ScrollBarThickness = 3
+    ListScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    ListScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+    ListScroll.Parent = Dropdown
+
+    local ListLayout = Instance.new("UIListLayout")
+    ListLayout.Padding = UDim.new(0, 5)
+    ListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    ListLayout.Parent = ListScroll
+
+    local function updateSelectionDisplay()
+        if selectedPlayer and selectedPlayer.Parent then
+            SelectedLabel.Text = selectedPlayer.DisplayName .. " (@" .. selectedPlayer.Name .. ")"
+            task.spawn(function()
+                local content, isReady = Players:GetUserThumbnailAsync(selectedPlayer.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size48x48)
+                if isReady and selectedPlayer then
+                    PlayerIcon.Image = content
+                end
+            end)
+        else
+            SelectedLabel.Text = getTranslation("Selected: None")
             PlayerIcon.Image = ""
-            return
         end
-
-        if currentIndex > #validPlayers then currentIndex = 1 end
-        if currentIndex < 1 then currentIndex = #validPlayers end
-
-        local selected = validPlayers[currentIndex]
-        PlayerNameLbl.Text = selected.DisplayName .. " (@" .. selected.Name .. ")"
-        
-        task.spawn(function()
-            local content, isReady = Players:GetUserThumbnailAsync(selected.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size48x48)
-            if isReady and validPlayers[currentIndex] == selected then
-                PlayerIcon.Image = content
-            end
-        end)
     end
 
-    PrevBtn.MouseButton1Click:Connect(function()
-        if #validPlayers > 0 then
-            currentIndex = currentIndex - 1
-            updateDisplay()
+    local function populateList()
+        for _, child in ipairs(ListScroll:GetChildren()) do
+            if child:IsA("TextButton") then child:Destroy() end
         end
-    end)
 
-    NextBtn.MouseButton1Click:Connect(function()
-        if #validPlayers > 0 then
-            currentIndex = currentIndex + 1
-            updateDisplay()
+        local filter = string.lower(SearchBox.Text)
+        local btnBgColor = isPolandMode and Color3.fromRGB(230, 230, 230) or Color3.fromRGB(45, 45, 55)
+        local btnTxtColor = isPolandMode and Color3.fromRGB(255, 0, 0) or Color3.fromRGB(220, 220, 220)
+        
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= LocalPlayer then
+                local dName = string.lower(p.DisplayName)
+                if filter == "" or string.sub(dName, 1, #filter) == filter then
+                    local pBtn = Instance.new("TextButton")
+                    pBtn.Size = UDim2.new(1, 0, 0, 25)
+                    pBtn.BackgroundColor3 = btnBgColor
+                    pBtn.Text = "  " .. p.DisplayName .. " (@" .. p.Name .. ")"
+                    pBtn.TextColor3 = btnTxtColor
+                    pBtn.Font = Enum.Font.SourceSansSemibold
+                    pBtn.TextSize = 13
+                    pBtn.TextXAlignment = Enum.TextXAlignment.Left
+                    pBtn.Parent = ListScroll
+                    local pCorner = Instance.new("UICorner") pCorner.CornerRadius = UDim.new(0, 4) pCorner.Parent = pBtn
+                    
+                    pBtn.MouseButton1Click:Connect(function()
+                        selectedPlayer = p
+                        updateSelectionDisplay()
+                    end)
+                end
+            end
+        end
+    end
+
+    SearchBox:GetPropertyChangedSignal("Text"):Connect(populateList)
+    table.insert(ThemeUpdaters, function() if expanded then populateList() end end)
+
+    table.insert(ActiveConnections, Players.PlayerAdded:Connect(function(p)
+        if expanded then populateList() end
+    end))
+    
+    table.insert(ActiveConnections, Players.PlayerRemoving:Connect(function(p)
+        if selectedPlayer == p then
+            selectedPlayer = nil
+            updateSelectionDisplay()
+        end
+        if expanded then populateList() end
+    end))
+
+    ExpandBtn.MouseButton1Click:Connect(function()
+        expanded = not expanded
+        local targetRot = expanded and 180 or 0
+        TweenService:Create(ExpandBtn, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Rotation = targetRot}):Play()
+        
+        if expanded then
+            Dropdown.Visible = true
+            populateList()
+            TweenService:Create(Dropdown, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = UDim2.new(1, 0, 0, 170)}):Play()
+        else
+            local tw = TweenService:Create(Dropdown, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = UDim2.new(1, 0, 0, 0)})
+            tw:Play()
+            task.delay(0.3, function() if not expanded then Dropdown.Visible = false end end)
         end
     end)
 
     TPBtn.MouseButton1Click:Connect(function()
-        if #validPlayers > 0 and validPlayers[currentIndex] then
-            local targetPlayer = validPlayers[currentIndex]
-            if targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                    LocalPlayer.Character.HumanoidRootPart.CFrame = targetPlayer.Character.HumanoidRootPart.CFrame
-                end
+        if selectedPlayer and selectedPlayer.Character and selectedPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                LocalPlayer.Character.HumanoidRootPart.CFrame = selectedPlayer.Character.HumanoidRootPart.CFrame
             end
         end
     end)
-
-    table.insert(TranslationUpdaters, updateDisplay)
-    table.insert(ActiveConnections, Players.PlayerAdded:Connect(updateDisplay))
-    table.insert(ActiveConnections, Players.PlayerRemoving:Connect(updateDisplay))
-    updateDisplay()
+    
+    table.insert(TranslationUpdaters, function()
+        if SearchBox then SearchBox.PlaceholderText = getTranslation("Search Display Name...") end
+        if not selectedPlayer then SelectedLabel.Text = getTranslation("Selected: None") end
+    end)
 end
 
 local function createAboutCard(parent)
@@ -1436,7 +1512,7 @@ local function createAboutCard(parent)
     Lbl2.Size = UDim2.new(1, 0, 0, 30)
     Lbl2.Position = UDim2.new(0, 0, 0, 25)
     Lbl2.BackgroundTransparency = 1
-    Lbl2.Text = "Version 2.6"
+    Lbl2.Text = "Version 2.7"
     Lbl2.TextColor3 = Color3.fromRGB(200, 200, 200)
     Lbl2.Font = Enum.Font.SourceSansSemibold
     Lbl2.TextSize = 14
@@ -1640,8 +1716,8 @@ table.insert(ActiveConnections, RunService.Stepped:Connect(function()
     end
 end))
 
--- TELEPORT TO PLAYER
-createPlayerCycler(FeaturesScroll)
+-- REDESIGNED TELEPORT TO PLAYER 
+createPlayerTeleportList(FeaturesScroll)
 
 -- INSTANT PROMPT & REACH
 local instantPromptEnabled = false
