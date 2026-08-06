@@ -1,10 +1,10 @@
 --[[
     ==================================================
-    eynz Hub - Mobile Edition (Ultimate V2.7)
-    - Redesigned Player Teleport with Search List
+    eynz Hub - Mobile Edition (Ultimate V2.8)
+    - Fixed text overflow in notifications (TextWrapped)
+    - Combined About and Details into one connected card
     - Added Display Name substring search filter
-    - Replaced UI opening animation (Clean & Simple)
-    - Transformed Launcher into a cool Logo Icon
+    - Clean UI animations & Dynamic Launcher Icon
     - Updated Version Bumps & Details Changelog
     ==================================================
 --]]
@@ -41,19 +41,19 @@ local statefulButtons = {}
 local TranslationUpdaters = {}
 
 local ChangelogTextEN = [[
-• Redesigned Player Teleport with Search & Scroll List
-• Reverted to simpler, clean UI animations
-• Added new stylish Launcher Logo Icon
-• Teleport search now sorts by Display Name prefix
-• Version 2.7 updates & general optimizations
+• Fixed text overflow in notifications
+• Connected Details & About sections visually
+• Redesigned Player Teleport with Search
+• Added stylish Launcher Logo Icon
+• Version 2.8 bug fixes & optimizations
 ]]
 
 local ChangelogTextPL = [[
-• Nowy Teleport do Graczy z Listą i Wyszukiwarką
-• Prostsze i czystsze animacje startowe UI
-• Nowe, stylowe logo launchera w formie ikony
-• Szukanie graczy po pierwszych literach (Display Name)
-• Aktualizacja do V2.7 i optymalizacje
+• Naprawiono ucinanie tekstu w powiadomieniach
+• Połączono wizualnie sekcje About i Details
+• Nowy Teleport do Graczy z Wyszukiwarką
+• Dodano nowe logo launchera w formie ikony
+• Optymalizacje i poprawki do wersji 2.8
 ]]
 
 local Translations = {
@@ -140,8 +140,8 @@ NotifGui.Parent = ParentGui
 
 local NotifContainer = Instance.new("Frame")
 NotifContainer.Name = "Container"
-NotifContainer.Size = UDim2.new(0, 220, 1, -20)
-NotifContainer.Position = UDim2.new(1, -230, 0, 10)
+NotifContainer.Size = UDim2.new(0, 260, 1, -20)
+NotifContainer.Position = UDim2.new(1, -270, 0, 10)
 NotifContainer.BackgroundTransparency = 1
 NotifContainer.Parent = NotifGui
 
@@ -158,7 +158,7 @@ local currentUIScale = 1.0
 
 local function ShowNotification(message)
     local NoteFrame = Instance.new("Frame")
-    NoteFrame.Size = UDim2.new(0, 200, 0, 40)
+    NoteFrame.Size = UDim2.new(0, 250, 0, 50)
     NoteFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
     NoteFrame.BackgroundTransparency = 1 
     
@@ -171,12 +171,14 @@ local function ShowNotification(message)
     NoteStroke.Parent = NoteFrame
     
     local NoteLabel = Instance.new("TextLabel")
-    NoteLabel.Size = UDim2.new(1, 0, 1, 0)
+    NoteLabel.Size = UDim2.new(1, -10, 1, -10)
+    NoteLabel.Position = UDim2.new(0, 5, 0, 5)
     NoteLabel.BackgroundTransparency = 1
     NoteLabel.Text = message
     NoteLabel.TextColor3 = isPolandMode and Color3.fromRGB(255, 0, 0) or Color3.fromRGB(255, 255, 255)
     NoteLabel.Font = Enum.Font.SourceSansBold
     NoteLabel.TextSize = 14
+    NoteLabel.TextWrapped = true
     NoteLabel.TextTransparency = 1
     NoteLabel.Parent = NoteFrame
     
@@ -318,7 +320,7 @@ local TitleText = Instance.new("TextLabel")
 TitleText.Size = UDim2.new(1, -40, 1, 0)
 TitleText.Position = UDim2.new(0, 12, 0, 0)
 TitleText.BackgroundTransparency = 1
-TitleText.Text = "eynz Hub | Mobile V2.7"
+TitleText.Text = "eynz Hub | Mobile V2.8"
 TitleText.TextColor3 = Color3.fromRGB(255, 255, 255)
 TitleText.TextSize = 16
 TitleText.Font = Enum.Font.SourceSansBold
@@ -335,7 +337,6 @@ CloseBtn.TextSize = 16
 CloseBtn.Font = Enum.Font.SourceSansBold
 CloseBtn.Parent = TitleBar
 
--- Reverted to simple and clean UI Animations
 local function closeUI()
     TweenService:Create(MainScale, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {Scale = 0}):Play()
     TweenService:Create(MainFrame, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {Position = UDim2.new(currentUIPos.X.Scale, currentUIPos.X.Offset, currentUIPos.Y.Scale, currentUIPos.Y.Offset + 15)}):Play()
@@ -1489,7 +1490,10 @@ local function createPlayerTeleportList(parent)
     end)
 end
 
+-- COMBINED ABOUT & DETAILS CARD
 local function createAboutCard(parent)
+    local expanded = false
+    
     local Card = Instance.new("Frame")
     Card.Size = UDim2.new(1, 0, 0, 60)
     Card.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
@@ -1499,7 +1503,7 @@ local function createAboutCard(parent)
     local CardCorner = Instance.new("UICorner") CardCorner.CornerRadius = UDim.new(0, 6) CardCorner.Parent = Card
     
     local Lbl1 = Instance.new("TextLabel")
-    Lbl1.Size = UDim2.new(1, 0, 0, 30)
+    Lbl1.Size = UDim2.new(1, -40, 0, 30)
     Lbl1.BackgroundTransparency = 1
     Lbl1.Text = "Made by 1eyn"
     Lbl1.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -1509,40 +1513,16 @@ local function createAboutCard(parent)
     registerDynamicText(Lbl1)
     
     local Lbl2 = Instance.new("TextLabel")
-    Lbl2.Size = UDim2.new(1, 0, 0, 30)
+    Lbl2.Size = UDim2.new(1, -40, 0, 30)
     Lbl2.Position = UDim2.new(0, 0, 0, 25)
     Lbl2.BackgroundTransparency = 1
-    Lbl2.Text = "Version 2.7"
+    Lbl2.Text = "Version 2.8"
     Lbl2.TextColor3 = Color3.fromRGB(200, 200, 200)
     Lbl2.Font = Enum.Font.SourceSansSemibold
     Lbl2.TextSize = 14
     Lbl2.Parent = Card
     registerDynamicText(Lbl2)
-end
-
-local function createDetailsExpandable(parent)
-    local expanded = false
     
-    local RowFrame = Instance.new("Frame")
-    RowFrame.Size = UDim2.new(1, 0, 0, 40)
-    RowFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
-    RowFrame.Parent = parent
-    table.insert(ThemeFrames, RowFrame)
-    applyThemeOutline(RowFrame)
-    local FrameCorner = Instance.new("UICorner") FrameCorner.CornerRadius = UDim.new(0, 6) FrameCorner.Parent = RowFrame
-    
-    local Label = Instance.new("TextLabel")
-    Label.Size = UDim2.new(0.8, 0, 1, 0)
-    Label.Position = UDim2.new(0, 10, 0, 0)
-    Label.BackgroundTransparency = 1
-    Label.TextColor3 = Color3.fromRGB(240, 240, 240)
-    Label.TextSize = 14
-    Label.Font = Enum.Font.SourceSansSemibold
-    Label.TextXAlignment = Enum.TextXAlignment.Left
-    Label.Parent = RowFrame
-    addTranslatable(Label, "Details")
-    registerDynamicText(Label)
-
     local ExpandBtn = Instance.new("TextButton")
     ExpandBtn.Size = UDim2.new(0, 24, 0, 24)
     ExpandBtn.Position = UDim2.new(1, -34, 0.5, -12)
@@ -1551,7 +1531,7 @@ local function createDetailsExpandable(parent)
     ExpandBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     ExpandBtn.Font = Enum.Font.SourceSansBold
     ExpandBtn.TextSize = 16
-    ExpandBtn.Parent = RowFrame
+    ExpandBtn.Parent = Card
     local ExpCorner = Instance.new("UICorner") ExpCorner.CornerRadius = UDim.new(0, 6) ExpCorner.Parent = ExpandBtn
     applyThemeOutline(ExpandBtn)
     registerDynamicText(ExpandBtn)
@@ -2091,7 +2071,6 @@ createButton("Destroy Everything & UI", SettingsScroll, function() DestroyHub() 
 
 createSection("About", SettingsScroll)
 createAboutCard(SettingsScroll)
-createDetailsExpandable(SettingsScroll)
 
 -- Initial Translation Refresh
 refreshTranslations()
