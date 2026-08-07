@@ -1,12 +1,10 @@
 --[[
     ==================================================
-    eynz Hub - Mobile Edition (Ultimate V3.11)
-    - V3.11 Enhancements:
-    - Added Premium Geometric Vortex Logo (No assets required, fully UI generated)
-    - Rebuilt 3D Coin Toss Minigame (Bigger Coin, 3D Embossed H/T faces)
-    - Implemented Physics-based Parabolic Coin Spin Animation
-    - Added Custom Viewport Lighting for the Coin
-    - Updated Multilingual Changelogs
+    eynz Hub - Mobile Edition (Ultimate V3.12)
+    - V3.12 Enhancements:
+    - Added Premium Neon Purple Vortex Logo (6 swirling crescent blades)
+    - Fixed 3D Coin Toss logic (Text and physical faces now match correctly)
+    - Updated Multilingual Changelogs for V3.12
     ==================================================
 --]]
 
@@ -42,10 +40,10 @@ local translatables = {}
 local statefulButtons = {}
 local TranslationUpdaters = {}
 
-local ChangelogTextEN = "• V3.11 Update!\n• Premium Geometric Logo\n• Improved 3D Coin Toss\n• Added Coin Faces (H/T)\n• Physics-based Coin Spin\n• E Button uses Camera & Holding"
-local ChangelogTextPL = "• Aktualizacja V3.11!\n• Nowe Geometryczne Logo\n• Ulepszony Rzut Monetą 3D\n• Dodano awers/rewers (H/T)\n• Fizyka rzutu monetą"
-local ChangelogTextRU = "• Обновление V3.11!\n• Премиум Логотип\n• Улучшенный 3D Бросок Монеты\n• Добавлены Орел/Решка (H/T)\n• Физика броска монеты"
-local ChangelogTextES = "• ¡Actualización V3.11!\n• Logo Geométrico Premium\n• Mejorado Lanzamiento 3D\n• Caras de moneda (H/T)\n• Físicas de lanzamiento"
+local ChangelogTextEN = "• V3.12 Update!\n• New Neon Vortex Logo\n• Fixed 3D Coin Toss Logic\n• Added Coin Faces (H/T)\n• Physics-based Coin Spin\n• E Button uses Camera"
+local ChangelogTextPL = "• Aktualizacja V3.12!\n• Nowe Logo Neon Vortex\n• Naprawiono Rzut Monetą 3D\n• Dodano awers/rewers (H/T)\n• Fizyka rzutu monetą"
+local ChangelogTextRU = "• Обновление V3.12!\n• Новый Логотип Вортекс\n• Исправлен 3D Бросок Монеты\n• Добавлены Орел/Решка (H/T)\n• Физика броска монеты"
+local ChangelogTextES = "• ¡Actualización V3.12!\n• Nuevo Logo Vórtice Neón\n• Lanzamiento 3D Arreglado\n• Caras de moneda (H/T)\n• Físicas de lanzamiento"
 
 local Translations = {
     ["Features"] = {EN = "Features", PL = "Funkcje", RU = "Функции", ES = "Funciones"},
@@ -299,56 +297,94 @@ ScreenGui.Name = "eynzHubMobileGUI"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = ParentGui
 
--- V3.11 Premium Geometric UI Vortex Logo
+-- V3.12 Premium Neon Purple Vortex Logo
 local ToggleBtn = Instance.new("TextButton")
 ToggleBtn.Name = "eynzToggleBtn"
 ToggleBtn.Size = UDim2.new(0, 48, 0, 48)
 ToggleBtn.Position = UDim2.new(0, 15, 0, 15)
-ToggleBtn.BackgroundColor3 = Color3.fromRGB(12, 10, 16)
+ToggleBtn.BackgroundColor3 = Color3.fromRGB(8, 5, 12) -- Deepest solid black/violet
 ToggleBtn.Text = ""
 ToggleBtn.ClipsDescendants = true
 ToggleBtn.Active = true 
 ToggleBtn.Parent = ScreenGui
 
 local ToggleCorner = Instance.new("UICorner") 
-ToggleCorner.CornerRadius = UDim.new(0, 16) 
+ToggleCorner.CornerRadius = UDim.new(0.25, 0) -- Smoothly rounded square
 ToggleCorner.Parent = ToggleBtn
 local LauncherScale = Instance.new("UIScale", ToggleBtn)
 applyThemeOutline(ToggleBtn, 1.5, true)
 
--- Constructing the premium structural geometry
-local vortexLayers = 10
-for i = 1, vortexLayers do
-    local layer = Instance.new("Frame")
-    local scale = 1.1 - (i * 0.1) -- Reduces size continuously towards center
-    layer.Size = UDim2.new(scale, 0, scale, 0)
-    layer.Position = UDim2.new(0.5, 0, 0.5, 0)
-    layer.AnchorPoint = Vector2.new(0.5, 0.5)
-    layer.Rotation = (i - 1) * 15
-    layer.BorderSizePixel = 0
-    
-    if i % 2 == 1 then
-        layer.BackgroundColor3 = ThemeColor
-        table.insert(ThemeUpdaters, function(newColor)
-            layer.BackgroundColor3 = newColor
-        end)
-    else
-        layer.BackgroundColor3 = Color3.fromRGB(15, 12, 20)
-    end
-    
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0.3, 0) -- Premium rounded squircle shapes
-    corner.Parent = layer
-    layer.Parent = ToggleBtn
-end
+-- Glowing purple orb in the very center
+local CenterOrb = Instance.new("Frame")
+CenterOrb.Size = UDim2.new(0.25, 0, 0.25, 0)
+CenterOrb.Position = UDim2.new(0.5, 0, 0.5, 0)
+CenterOrb.AnchorPoint = Vector2.new(0.5, 0.5)
+CenterOrb.BackgroundColor3 = ThemeColor
+local OrbCorner = Instance.new("UICorner") 
+OrbCorner.CornerRadius = UDim.new(1, 0) 
+OrbCorner.Parent = CenterOrb
+CenterOrb.Parent = ToggleBtn
+table.insert(ThemeUpdaters, function(newColor) CenterOrb.BackgroundColor3 = newColor end)
 
-local VortexCenterDot = Instance.new("Frame")
-VortexCenterDot.Size = UDim2.new(0.12, 0, 0.12, 0)
-VortexCenterDot.Position = UDim2.new(0.5, 0, 0.5, 0)
-VortexCenterDot.AnchorPoint = Vector2.new(0.5, 0.5)
-VortexCenterDot.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-local dotCorner = Instance.new("UICorner") dotCorner.CornerRadius = UDim.new(1, 0) dotCorner.Parent = VortexCenterDot
-VortexCenterDot.Parent = ToggleBtn
+local OrbGlow = Instance.new("UIStroke")
+OrbGlow.Color = ThemeColor
+OrbGlow.Thickness = 3
+OrbGlow.Transparency = 0.6
+OrbGlow.Parent = CenterOrb
+table.insert(ThemeUpdaters, function(newColor) OrbGlow.Color = newColor end)
+
+-- Core radiant light inside the orb
+local CoreDot = Instance.new("Frame")
+CoreDot.Size = UDim2.new(0.4, 0, 0.4, 0)
+CoreDot.Position = UDim2.new(0.5, 0, 0.5, 0)
+CoreDot.AnchorPoint = Vector2.new(0.5, 0.5)
+CoreDot.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+local DotCorner = Instance.new("UICorner") 
+DotCorner.CornerRadius = UDim.new(1, 0) 
+DotCorner.Parent = CoreDot
+CoreDot.Parent = CenterOrb
+
+-- 6 Crescent Blades Swirling Counter-Clockwise
+local numBlades = 6
+local segmentsPerBlade = 14
+for i = 1, numBlades do
+    local angleOffset = (i - 1) * (360 / numBlades)
+    local BladeContainer = Instance.new("Frame")
+    BladeContainer.Size = UDim2.new(1, 0, 1, 0)
+    BladeContainer.Position = UDim2.new(0.5, 0, 0.5, 0)
+    BladeContainer.AnchorPoint = Vector2.new(0.5, 0.5)
+    BladeContainer.BackgroundTransparency = 1
+    BladeContainer.Rotation = angleOffset
+    BladeContainer.Parent = ToggleBtn
+    
+    for j = 1, segmentsPerBlade do
+        local segment = Instance.new("Frame")
+        -- Start thick at center, taper out to a sharp point
+        local size = 8 - (j * 0.5)
+        -- Distance spirals outwards
+        local dist = 6 + (j * 1.3)
+        -- Negative angle for counter-clockwise swirling vortex
+        local swirlAngle = -j * 8 
+        
+        local rad = math.rad(swirlAngle)
+        local x = math.cos(rad) * dist
+        local y = math.sin(rad) * dist
+        
+        segment.Size = UDim2.new(0, size, 0, size)
+        segment.Position = UDim2.new(0.5, x, 0.5, y)
+        segment.AnchorPoint = Vector2.new(0.5, 0.5)
+        segment.BackgroundColor3 = ThemeColor
+        segment.BackgroundTransparency = (j / segmentsPerBlade) * 0.8
+        segment.BorderSizePixel = 0
+        
+        local segCorner = Instance.new("UICorner")
+        segCorner.CornerRadius = UDim.new(1, 0)
+        segCorner.Parent = segment
+        
+        segment.Parent = BladeContainer
+        table.insert(ThemeUpdaters, function(newColor) segment.BackgroundColor3 = newColor end)
+    end
+end
 
 -- Main UI Frame
 local MainFrame = Instance.new("Frame")
@@ -420,7 +456,7 @@ local TitleText = Instance.new("TextLabel")
 TitleText.Size = UDim2.new(1, -40, 1, 0)
 TitleText.Position = UDim2.new(0, 12, 0, 0)
 TitleText.BackgroundTransparency = 1
-TitleText.Text = "eynz Hub | Mobile V3.11"
+TitleText.Text = "eynz Hub | Mobile V3.12"
 TitleText.TextColor3 = Color3.fromRGB(255, 255, 255)
 TitleText.TextSize = 16
 TitleText.Font = Enum.Font.SourceSansBold
@@ -1196,7 +1232,7 @@ local function createColorPresetsRow(parent)
 end
 
 ----------------------------------------------------
--- PLAYER MANAGER WINDOW (V3.11)
+-- PLAYER MANAGER WINDOW (V3.12)
 ----------------------------------------------------
 local PlayerManagerWindow = Instance.new("Frame")
 PlayerManagerWindow.Name = "PlayerManagerWindow"
@@ -1582,7 +1618,7 @@ local function createAboutCard(parent)
     Lbl2.Size = UDim2.new(1, -20, 0, 20)
     Lbl2.Position = UDim2.new(0, 10, 0, 25)
     Lbl2.BackgroundTransparency = 1
-    Lbl2.Text = "Version 3.11"
+    Lbl2.Text = "Version 3.12"
     Lbl2.TextColor3 = Color3.fromRGB(200, 200, 200)
     Lbl2.Font = Enum.Font.SourceSansSemibold
     Lbl2.TextSize = 14
@@ -1882,7 +1918,8 @@ createButton("Toss Coin", FunScroll, function()
     local spinTime = 2.0
     local startTime = tick()
     local flips = 6
-    local targetRotation = isHeads and 0 or math.pi
+    -- FIXED V3.12 logic mapping: math.pi (180deg flip) correctly faces the +X (Heads) towards the camera
+    local targetRotation = isHeads and math.pi or 0
     
     local conn
     conn = RunService.RenderStepped:Connect(function()
