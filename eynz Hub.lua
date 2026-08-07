@@ -1,12 +1,12 @@
 --[[
     ==================================================
-    eynz Hub - Mobile Edition (Ultimate V3.1)
-    - V3.1 Enhancements:
-    - Fixed Launcher Vortex Logo (Added Text Fallback & changed asset)
-    - Replaced Player List with Player Manager
-    - Added Player Manager ESP Highlight
-    - Added 3D Coin Toss Minigame in Fun Tab
-    - Prompt Button now detects nearest to Camera & supports Holding
+    eynz Hub - Mobile Edition (Ultimate V3.11)
+    - V3.11 Enhancements:
+    - Added Premium Geometric Vortex Logo (No assets required, fully UI generated)
+    - Rebuilt 3D Coin Toss Minigame (Bigger Coin, 3D Embossed H/T faces)
+    - Implemented Physics-based Parabolic Coin Spin Animation
+    - Added Custom Viewport Lighting for the Coin
+    - Updated Multilingual Changelogs
     ==================================================
 --]]
 
@@ -42,10 +42,10 @@ local translatables = {}
 local statefulButtons = {}
 local TranslationUpdaters = {}
 
-local ChangelogTextEN = "• V3.1 Update!\n• Fixed Launcher Vortex Logo\n• Added Player Manager ESP\n• Renamed Player List to Manager\n• Added 3D Coin Toss to Fun tab\n• E Button uses Camera & Holding"
-local ChangelogTextPL = "• Aktualizacja V3.1!\n• Naprawiono logo Vortex na Launcherze\n• Dodano ESP w Menedżerze Graczy\n• Zmieniono nazwę na Menedżer Graczy\n• Dodano Rzut Monetą 3D w Zabawie\n• Przycisk E z kamerą i przytrzymaniem"
-local ChangelogTextRU = "• Обновление V3.1!\n• Исправлен логотип Vortex в лаунчере\n• Добавлен ESP в менеджер игроков\n• Переименовано в Менеджер Игроков\n• Добавлен 3D Бросок Монеты\n• Кнопка Е (Камера и Удержание)"
-local ChangelogTextES = "• ¡Actualización V3.1!\n• Logo de Vortex arreglado\n• ESP de Jugadores añadido\n• Renombrado a Gestor de Jugadores\n• Lanzamiento de Moneda 3D añadido\n• Botón E usa Cámara y Mantener"
+local ChangelogTextEN = "• V3.11 Update!\n• Premium Geometric Logo\n• Improved 3D Coin Toss\n• Added Coin Faces (H/T)\n• Physics-based Coin Spin\n• E Button uses Camera & Holding"
+local ChangelogTextPL = "• Aktualizacja V3.11!\n• Nowe Geometryczne Logo\n• Ulepszony Rzut Monetą 3D\n• Dodano awers/rewers (H/T)\n• Fizyka rzutu monetą"
+local ChangelogTextRU = "• Обновление V3.11!\n• Премиум Логотип\n• Улучшенный 3D Бросок Монеты\n• Добавлены Орел/Решка (H/T)\n• Физика броска монеты"
+local ChangelogTextES = "• ¡Actualización V3.11!\n• Logo Geométrico Premium\n• Mejorado Lanzamiento 3D\n• Caras de moneda (H/T)\n• Físicas de lanzamiento"
 
 local Translations = {
     ["Features"] = {EN = "Features", PL = "Funkcje", RU = "Функции", ES = "Funciones"},
@@ -299,49 +299,56 @@ ScreenGui.Name = "eynzHubMobileGUI"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = ParentGui
 
--- Launcher Logo Fix: Deep Purple/Black Background with robust Decal + Fallback Text
+-- V3.11 Premium Geometric UI Vortex Logo
 local ToggleBtn = Instance.new("TextButton")
 ToggleBtn.Name = "eynzToggleBtn"
 ToggleBtn.Size = UDim2.new(0, 48, 0, 48)
 ToggleBtn.Position = UDim2.new(0, 15, 0, 15)
-ToggleBtn.BackgroundColor3 = Color3.fromRGB(15, 0, 25) -- Deep dark purple background
+ToggleBtn.BackgroundColor3 = Color3.fromRGB(12, 10, 16)
 ToggleBtn.Text = ""
+ToggleBtn.ClipsDescendants = true
 ToggleBtn.Active = true 
 ToggleBtn.Parent = ScreenGui
 
-local VortexFallbackText = Instance.new("TextLabel")
-VortexFallbackText.Size = UDim2.new(1, 0, 1, 0)
-VortexFallbackText.BackgroundTransparency = 1
-VortexFallbackText.Text = "🌀"
-VortexFallbackText.TextScaled = true
-VortexFallbackText.TextColor3 = ThemeColor
-VortexFallbackText.ZIndex = 4
-VortexFallbackText.Parent = ToggleBtn
-table.insert(ThemeTexts, VortexFallbackText)
-
-local VortexImg = Instance.new("ImageLabel")
-VortexImg.AnchorPoint = Vector2.new(0.5, 0.5)
-VortexImg.Size = UDim2.new(0.9, 0, 0.9, 0)
-VortexImg.Position = UDim2.new(0.5, 0, 0.5, 0)
-VortexImg.BackgroundTransparency = 1
-VortexImg.Image = "rbxassetid://1085203387" -- Extremely robust White Spiral ID
-VortexImg.ImageColor3 = ThemeColor
-VortexImg.ZIndex = 5
-VortexImg.Parent = ToggleBtn
-
-table.insert(ActiveConnections, RunService.RenderStepped:Connect(function(dt)
-    if VortexImg and VortexImg.Parent then
-        VortexImg.Rotation = VortexImg.Rotation + (dt * 120)
-    end
-    if VortexFallbackText and VortexFallbackText.Parent then
-        VortexFallbackText.Rotation = VortexFallbackText.Rotation + (dt * 120)
-    end
-end))
-table.insert(ThemeUpdaters, function(newColor) VortexImg.ImageColor3 = newColor end)
-
+local ToggleCorner = Instance.new("UICorner") 
+ToggleCorner.CornerRadius = UDim.new(0, 16) 
+ToggleCorner.Parent = ToggleBtn
 local LauncherScale = Instance.new("UIScale", ToggleBtn)
-local ToggleCorner = Instance.new("UICorner") ToggleCorner.CornerRadius = UDim.new(0, 16) ToggleCorner.Parent = ToggleBtn
 applyThemeOutline(ToggleBtn, 1.5, true)
+
+-- Constructing the premium structural geometry
+local vortexLayers = 10
+for i = 1, vortexLayers do
+    local layer = Instance.new("Frame")
+    local scale = 1.1 - (i * 0.1) -- Reduces size continuously towards center
+    layer.Size = UDim2.new(scale, 0, scale, 0)
+    layer.Position = UDim2.new(0.5, 0, 0.5, 0)
+    layer.AnchorPoint = Vector2.new(0.5, 0.5)
+    layer.Rotation = (i - 1) * 15
+    layer.BorderSizePixel = 0
+    
+    if i % 2 == 1 then
+        layer.BackgroundColor3 = ThemeColor
+        table.insert(ThemeUpdaters, function(newColor)
+            layer.BackgroundColor3 = newColor
+        end)
+    else
+        layer.BackgroundColor3 = Color3.fromRGB(15, 12, 20)
+    end
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0.3, 0) -- Premium rounded squircle shapes
+    corner.Parent = layer
+    layer.Parent = ToggleBtn
+end
+
+local VortexCenterDot = Instance.new("Frame")
+VortexCenterDot.Size = UDim2.new(0.12, 0, 0.12, 0)
+VortexCenterDot.Position = UDim2.new(0.5, 0, 0.5, 0)
+VortexCenterDot.AnchorPoint = Vector2.new(0.5, 0.5)
+VortexCenterDot.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+local dotCorner = Instance.new("UICorner") dotCorner.CornerRadius = UDim.new(1, 0) dotCorner.Parent = VortexCenterDot
+VortexCenterDot.Parent = ToggleBtn
 
 -- Main UI Frame
 local MainFrame = Instance.new("Frame")
@@ -413,7 +420,7 @@ local TitleText = Instance.new("TextLabel")
 TitleText.Size = UDim2.new(1, -40, 1, 0)
 TitleText.Position = UDim2.new(0, 12, 0, 0)
 TitleText.BackgroundTransparency = 1
-TitleText.Text = "eynz Hub | Mobile V3.1"
+TitleText.Text = "eynz Hub | Mobile V3.11"
 TitleText.TextColor3 = Color3.fromRGB(255, 255, 255)
 TitleText.TextSize = 16
 TitleText.Font = Enum.Font.SourceSansBold
@@ -1189,7 +1196,7 @@ local function createColorPresetsRow(parent)
 end
 
 ----------------------------------------------------
--- PLAYER MANAGER WINDOW (V3.1)
+-- PLAYER MANAGER WINDOW (V3.11)
 ----------------------------------------------------
 local PlayerManagerWindow = Instance.new("Frame")
 PlayerManagerWindow.Name = "PlayerManagerWindow"
@@ -1575,7 +1582,7 @@ local function createAboutCard(parent)
     Lbl2.Size = UDim2.new(1, -20, 0, 20)
     Lbl2.Position = UDim2.new(0, 10, 0, 25)
     Lbl2.BackgroundTransparency = 1
-    Lbl2.Text = "Version 3.1"
+    Lbl2.Text = "Version 3.11"
     Lbl2.TextColor3 = Color3.fromRGB(200, 200, 200)
     Lbl2.Font = Enum.Font.SourceSansSemibold
     Lbl2.TextSize = 14
@@ -1792,39 +1799,71 @@ table.insert(ActiveConnections, workspace.DescendantAdded:Connect(function(obj)
 end))
 
 ----------------------------------------------------
--- FUN TAB (3D Coin Toss)
+-- FUN TAB (3D Premium Coin Toss)
 ----------------------------------------------------
 createSection("3D Coin Toss", FunScroll)
 
 local CoinContainer = Instance.new("Frame")
-CoinContainer.Size = UDim2.new(1, 0, 0, 160)
+CoinContainer.Size = UDim2.new(1, 0, 0, 170)
 CoinContainer.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
 CoinContainer.Parent = FunScroll
 table.insert(ThemeFrames, CoinContainer)
 applyThemeOutline(CoinContainer, 1, false)
-local CoinCorner = Instance.new("UICorner") CoinCorner.CornerRadius = UDim.new(0, 6) CoinCorner.Parent = CoinContainer
+local CoinContCorner = Instance.new("UICorner") CoinContCorner.CornerRadius = UDim.new(0, 6) CoinContCorner.Parent = CoinContainer
 
 local CoinViewport = Instance.new("ViewportFrame")
-CoinViewport.Size = UDim2.new(1, 0, 0, 100)
+CoinViewport.Size = UDim2.new(1, 0, 0, 110)
 CoinViewport.Position = UDim2.new(0, 0, 0, 5)
 CoinViewport.BackgroundTransparency = 1
+-- Adding premium 3D lighting setup for the gold to shine
+CoinViewport.LightColor = Color3.fromRGB(255, 255, 255)
+CoinViewport.Ambient = Color3.fromRGB(150, 150, 150)
+CoinViewport.LightDirection = Vector3.new(-1, -1, -1)
 CoinViewport.Parent = CoinContainer
 
 local CoinCam = Instance.new("Camera")
-CoinCam.CFrame = CFrame.new(Vector3.new(0, 0, 4), Vector3.new(0, 0, 0))
+-- Backing the camera up so we can see the full toss trajectory
+CoinCam.CFrame = CFrame.new(Vector3.new(0, 1.0, 6.0), Vector3.new(0, 1.0, 0))
 CoinViewport.CurrentCamera = CoinCam
+
+local CoinModel = Instance.new("Model")
+CoinModel.Parent = CoinViewport
 
 local CoinPart = Instance.new("Part")
 CoinPart.Shape = Enum.PartType.Cylinder
-CoinPart.Size = Vector3.new(0.2, 1.8, 1.8)
-CoinPart.Color = Color3.fromRGB(255, 215, 0)
-CoinPart.Material = Enum.Material.Metal
-CoinPart.CFrame = CFrame.Angles(0, math.rad(90), 0)
-CoinPart.Parent = CoinViewport
+CoinPart.Size = Vector3.new(0.4, 2.5, 2.5) -- Made it thicker and larger
+CoinPart.Color = Color3.fromRGB(235, 195, 0) -- Premium Gold Color
+CoinPart.Material = Enum.Material.SmoothPlastic
+CoinPart.CFrame = CFrame.new(0,0,0) * CFrame.Angles(0, math.rad(90), 0)
+CoinPart.Parent = CoinModel
+CoinModel.PrimaryPart = CoinPart
+
+-- Creating structural 3D text for H (Heads) and T (Tails)
+local function createTextPart(size, offset)
+    local p = Instance.new("Part")
+    p.Size = size
+    p.Color = Color3.fromRGB(190, 140, 0) -- Darker Embossed Gold
+    p.Material = Enum.Material.SmoothPlastic
+    p.CFrame = CoinPart.CFrame * CFrame.new(offset)
+    p.Parent = CoinModel
+    return p
+end
+
+local hThickness = 0.08
+local faceOffset = 0.2 + (hThickness / 2) -- Ensures text sits perfectly on the coin's flat faces
+
+-- H structure (Heads) on the Right Face (+X)
+createTextPart(Vector3.new(hThickness, 1.2, 0.25), Vector3.new(faceOffset, 0, -0.4)) -- Left bar
+createTextPart(Vector3.new(hThickness, 1.2, 0.25), Vector3.new(faceOffset, 0, 0.4))  -- Right bar
+createTextPart(Vector3.new(hThickness, 0.25, 0.8), Vector3.new(faceOffset, 0, 0))    -- Mid bar
+
+-- T structure (Tails) on the Left Face (-X)
+createTextPart(Vector3.new(hThickness, 0.25, 1.1), Vector3.new(-faceOffset, 0.5, 0))  -- Top bar
+createTextPart(Vector3.new(hThickness, 1.0, 0.25), Vector3.new(-faceOffset, -0.1, 0)) -- Mid bar
 
 local CoinResult = Instance.new("TextLabel")
 CoinResult.Size = UDim2.new(1, 0, 0, 20)
-CoinResult.Position = UDim2.new(0, 0, 0, 100)
+CoinResult.Position = UDim2.new(0, 0, 0, 115)
 CoinResult.BackgroundTransparency = 1
 CoinResult.Text = ""
 CoinResult.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -1840,18 +1879,32 @@ createButton("Toss Coin", FunScroll, function()
     CoinResult.Text = getTranslation("Flipping...")
     
     local isHeads = math.random(1, 2) == 1
-    local spinTime = 1.5
+    local spinTime = 2.0
     local startTime = tick()
+    local flips = 6
+    local targetRotation = isHeads and 0 or math.pi
+    
     local conn
     conn = RunService.RenderStepped:Connect(function()
         local t = tick() - startTime
-        if t >= spinTime then
+        local alpha = math.clamp(t / spinTime, 0, 1)
+        
+        -- High quality easing out for realistic deceleration
+        local easeOut = 1 - math.pow(1 - alpha, 3)
+        -- Parabolic jump path (up to 2.5 studs)
+        local h = 2.5 * 4 * alpha * (1 - alpha)
+        
+        local totalRot = (flips * math.pi * 2) + targetRotation
+        local currentRot = easeOut * totalRot
+        
+        -- Pivot directly affects the root & rigidly moves all the 3D Text parts
+        CoinModel:PivotTo(CFrame.new(0, h, 0) * CFrame.Angles(currentRot, math.rad(90), 0))
+        
+        if alpha >= 1 then
             conn:Disconnect()
             isTossing = false
             CoinResult.Text = isHeads and getTranslation("Heads!") or getTranslation("Tails!")
-            CoinPart.CFrame = CFrame.Angles(math.rad(isHeads and 0 or 180), math.rad(90), 0)
-        else
-            CoinPart.CFrame = CFrame.Angles(t * math.pi * 8, math.rad(90), 0)
+            CoinModel:PivotTo(CFrame.new(0, 0, 0) * CFrame.Angles(targetRotation, math.rad(90), 0))
         end
     end)
     table.insert(ActiveConnections, conn)
