@@ -1,12 +1,12 @@
 --[[
     ==================================================
-    eynz Hub - Mobile Edition (Ultimate V3.01)
-    - Minor V3.01 Enhancements!
-    - Fixed Launcher Vortex Logo visibility
-    - Replaced TP with direct Player Panel Button
-    - Larger Player Avatar Icon inside the Panel
-    - Prompt Reach integrated into Instant Prompt submenu
-    - Fixed expandable inner UI clipping issues
+    eynz Hub - Mobile Edition (Ultimate V3.1)
+    - V3.1 Enhancements:
+    - Fixed Launcher Vortex Logo (Added Text Fallback & changed asset)
+    - Replaced Player List with Player Manager
+    - Added Player Manager ESP Highlight
+    - Added 3D Coin Toss Minigame in Fun Tab
+    - Prompt Button now detects nearest to Camera & supports Holding
     ==================================================
 --]]
 
@@ -32,6 +32,7 @@ end)
 
 if ParentGui:FindFirstChild("eynzHubMobileGUI") then ParentGui:FindFirstChild("eynzHubMobileGUI"):Destroy() end
 if ParentGui:FindFirstChild("eynzNotifications") then ParentGui:FindFirstChild("eynzNotifications"):Destroy() end
+if ParentGui:FindFirstChild("eynzPromptButton") then ParentGui:FindFirstChild("eynzPromptButton"):Destroy() end
 
 ----------------------------------------------------
 -- MULTILINGUAL SYSTEM
@@ -41,10 +42,10 @@ local translatables = {}
 local statefulButtons = {}
 local TranslationUpdaters = {}
 
-local ChangelogTextEN = "• V3.01 Update!\n• Fixed Launcher Vortex Logo\n• Replaced TP with Open Player Panel directly\n• Larger Player Avatar in Panel\n• Prompt Reach moved inside Instant Prompt\n• Fixed Expandable Menu Outline Clipping"
-local ChangelogTextPL = "• Aktualizacja V3.01!\n• Naprawiono logo Vortex na Launcherze\n• Zastąpiono TP bezpośrednim Panelem Graczy\n• Większy Avatar w Panelu\n• Zasięg przeniesiony do Szybkiej Interakcji\n• Naprawiono obcinanie konturów pod menu"
-local ChangelogTextRU = "• Обновление V3.01!\n• Исправлен логотип Vortex в лаунчере\n• Заменен ТП на прямую кнопку панели игроков\n• Увеличен аватар игрока\n• Радиус действия перенесен в Мгн. Действие\n• Исправлены границы в выпадающем меню"
-local ChangelogTextES = "• ¡Actualización V3.01!\n• Logo de Vortex arreglado\n• TP reemplazado por Botón Directo de Jugadores\n• Avatar de jugador más grande\n• Alcance movido a Interacción Instantánea\n• Bordes de menú expandible arreglados"
+local ChangelogTextEN = "• V3.1 Update!\n• Fixed Launcher Vortex Logo\n• Added Player Manager ESP\n• Renamed Player List to Manager\n• Added 3D Coin Toss to Fun tab\n• E Button uses Camera & Holding"
+local ChangelogTextPL = "• Aktualizacja V3.1!\n• Naprawiono logo Vortex na Launcherze\n• Dodano ESP w Menedżerze Graczy\n• Zmieniono nazwę na Menedżer Graczy\n• Dodano Rzut Monetą 3D w Zabawie\n• Przycisk E z kamerą i przytrzymaniem"
+local ChangelogTextRU = "• Обновление V3.1!\n• Исправлен логотип Vortex в лаунчере\n• Добавлен ESP в менеджер игроков\n• Переименовано в Менеджер Игроков\n• Добавлен 3D Бросок Монеты\n• Кнопка Е (Камера и Удержание)"
+local ChangelogTextES = "• ¡Actualización V3.1!\n• Logo de Vortex arreglado\n• ESP de Jugadores añadido\n• Renombrado a Gestor de Jugadores\n• Lanzamiento de Moneda 3D añadido\n• Botón E usa Cámara y Mantener"
 
 local Translations = {
     ["Features"] = {EN = "Features", PL = "Funkcje", RU = "Функции", ES = "Funciones"},
@@ -56,7 +57,8 @@ local Translations = {
     ["Enable Custom Speed"] = {EN = "Enable Custom Speed", PL = "Włącz Własną Prędkość", RU = "Своя скорость", ES = "Activar Velocidad Personalizada"},
     ["WalkSpeed Value"] = {EN = "WalkSpeed Value", PL = "Prędkość Chodzenia", RU = "Значение скорости", ES = "Valor de Velocidad"},
     ["Noclip"] = {EN = "Noclip", PL = "Przenikanie", RU = "Сквозь стены (Noclip)", ES = "Traspasar Paredes"},
-    ["Open Player List"] = {EN = "Open Player List", PL = "Otwórz Listę Graczy", RU = "Открыть список игроков", ES = "Abrir Lista de Jugadores"},
+    ["Open Player Manager"] = {EN = "Open Player Manager", PL = "Otwórz Menedżer Graczy", RU = "Открыть Менеджер Игроков", ES = "Abrir Gestor de Jugadores"},
+    ["Player Manager"] = {EN = "Player Manager", PL = "Menedżer Graczy", RU = "Менеджер Игроков", ES = "Gestor de Jugadores"},
     ["Teleport"] = {EN = "Teleport", PL = "Teleport", RU = "Телепорт", ES = "Teletransportar"},
     ["Spectate"] = {EN = "Spectate", PL = "Obserwuj", RU = "Наблюдать", ES = "Espectar"},
     ["Stop Spectating"] = {EN = "Stop Spectating", PL = "Przestań Obs.", RU = "Перестать набл.", ES = "Dejar de Espectar"},
@@ -98,8 +100,11 @@ local Translations = {
     ["OFF"] = {EN = "OFF", PL = "WYŁ", RU = "ВЫКЛ", ES = "APAG"},
     ["Wrong Format"] = {EN = "Wrong Format", PL = "Zły Format", RU = "Неверный формат", ES = "Formato Incorrecto"},
     ["Copied to Clipboard"] = {EN = "Copied to Clipboard", PL = "Skopiowano!", RU = "Скопировано!", ES = "¡Copiado!"},
-    ["Coming Soon..."] = {EN = "Coming Soon...", PL = "Wkrótce...", RU = "Скоро...", ES = "Próximamente..."},
-    ["eynz Hub successfully destroyed"] = {EN = "eynz Hub successfully destroyed", PL = "eynz Hub usunięto", RU = "eynz Hub удален", ES = "eynz Hub destruido"},
+    ["Toss Coin"] = {EN = "Toss Coin", PL = "Rzuć Monetą", RU = "Бросить Монету", ES = "Lanzar Moneda"},
+    ["Flipping..."] = {EN = "Flipping...", PL = "Rzucanie...", RU = "Бросаем...", ES = "Lanzando..."},
+    ["Heads!"] = {EN = "Heads!", PL = "Orzeł!", RU = "Орел!", ES = "¡Cara!"},
+    ["Tails!"] = {EN = "Tails!", PL = "Reszka!", RU = "Решка!", ES = "¡Cruz!"},
+    ["3D Coin Toss"] = {EN = "3D Coin Toss", PL = "Rzut Monetą 3D", RU = "3D Бросок Монеты", ES = "Lanzamiento Moneda 3D"},
     ["Changelog"] = {EN = ChangelogTextEN, PL = ChangelogTextPL, RU = ChangelogTextRU, ES = ChangelogTextES}
 }
 
@@ -220,7 +225,6 @@ local function ShowNotification(message)
     TweenService:Create(BarBG, TweenInfo.new(0.4), {BackgroundTransparency = 0.5}):Play()
     TweenService:Create(BarFill, TweenInfo.new(0.4), {BackgroundTransparency = 0}):Play()
     
-    -- Progress Bar Tween (3.5s)
     TweenService:Create(BarFill, TweenInfo.new(3.5, Enum.EasingStyle.Linear), {Size = UDim2.new(0, 0, 1, 0)}):Play()
 
     task.delay(3.5, function()
@@ -295,22 +299,32 @@ ScreenGui.Name = "eynzHubMobileGUI"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = ParentGui
 
--- Squircle Launcher Logo with Vortex
+-- Launcher Logo Fix: Deep Purple/Black Background with robust Decal + Fallback Text
 local ToggleBtn = Instance.new("TextButton")
 ToggleBtn.Name = "eynzToggleBtn"
 ToggleBtn.Size = UDim2.new(0, 48, 0, 48)
 ToggleBtn.Position = UDim2.new(0, 15, 0, 15)
-ToggleBtn.BackgroundColor3 = Color3.fromRGB(22, 22, 28)
+ToggleBtn.BackgroundColor3 = Color3.fromRGB(15, 0, 25) -- Deep dark purple background
 ToggleBtn.Text = ""
 ToggleBtn.Active = true 
 ToggleBtn.Parent = ScreenGui
 
+local VortexFallbackText = Instance.new("TextLabel")
+VortexFallbackText.Size = UDim2.new(1, 0, 1, 0)
+VortexFallbackText.BackgroundTransparency = 1
+VortexFallbackText.Text = "🌀"
+VortexFallbackText.TextScaled = true
+VortexFallbackText.TextColor3 = ThemeColor
+VortexFallbackText.ZIndex = 4
+VortexFallbackText.Parent = ToggleBtn
+table.insert(ThemeTexts, VortexFallbackText)
+
 local VortexImg = Instance.new("ImageLabel")
 VortexImg.AnchorPoint = Vector2.new(0.5, 0.5)
-VortexImg.Size = UDim2.new(0.85, 0, 0.85, 0)
+VortexImg.Size = UDim2.new(0.9, 0, 0.9, 0)
 VortexImg.Position = UDim2.new(0.5, 0, 0.5, 0)
 VortexImg.BackgroundTransparency = 1
-VortexImg.Image = "rbxassetid://2848154146" -- Fixed reliable spiral asset
+VortexImg.Image = "rbxassetid://1085203387" -- Extremely robust White Spiral ID
 VortexImg.ImageColor3 = ThemeColor
 VortexImg.ZIndex = 5
 VortexImg.Parent = ToggleBtn
@@ -318,6 +332,9 @@ VortexImg.Parent = ToggleBtn
 table.insert(ActiveConnections, RunService.RenderStepped:Connect(function(dt)
     if VortexImg and VortexImg.Parent then
         VortexImg.Rotation = VortexImg.Rotation + (dt * 120)
+    end
+    if VortexFallbackText and VortexFallbackText.Parent then
+        VortexFallbackText.Rotation = VortexFallbackText.Rotation + (dt * 120)
     end
 end))
 table.insert(ThemeUpdaters, function(newColor) VortexImg.ImageColor3 = newColor end)
@@ -396,7 +413,7 @@ local TitleText = Instance.new("TextLabel")
 TitleText.Size = UDim2.new(1, -40, 1, 0)
 TitleText.Position = UDim2.new(0, 12, 0, 0)
 TitleText.BackgroundTransparency = 1
-TitleText.Text = "eynz Hub | Mobile V3.01"
+TitleText.Text = "eynz Hub | Mobile V3.1"
 TitleText.TextColor3 = Color3.fromRGB(255, 255, 255)
 TitleText.TextSize = 16
 TitleText.Font = Enum.Font.SourceSansBold
@@ -496,17 +513,6 @@ FunScroll.Visible = false
 SettingsScroll.Position = UDim2.new(1, 0, 0, 75)
 SettingsScroll.Visible = false
 
--- Fun Tab Content
-local FunText = Instance.new("TextLabel")
-FunText.Size = UDim2.new(1, 0, 1, 0)
-FunText.BackgroundTransparency = 1
-FunText.Text = getTranslation("Coming Soon...")
-FunText.TextColor3 = Color3.fromRGB(150, 150, 150)
-FunText.Font = Enum.Font.SourceSansBold
-FunText.TextSize = 20
-FunText.Parent = FunScroll
-addTranslatable(FunText, "Coming Soon...")
-
 local currentTab = FeaturesScroll
 
 local function switchTab(tabName, scrollObj, btnObj)
@@ -542,7 +548,7 @@ local function createSection(textKey, parent)
     local SectionFrame = Instance.new("Frame")
     SectionFrame.Size = UDim2.new(1, 0, 0, 25)
     SectionFrame.BackgroundTransparency = 1
-    SectionFrame.Parent = parent or FeaturesScroll
+    SectionFrame.Parent = parent
     
     local SectionLabel = Instance.new("TextLabel")
     SectionLabel.Name = "SectionLabel"
@@ -561,7 +567,7 @@ local function createToggle(textKey, parent, defaultState, callback)
     local ToggleFrame = Instance.new("Frame")
     ToggleFrame.Size = UDim2.new(1, 0, 0, 40)
     ToggleFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
-    ToggleFrame.Parent = parent or FeaturesScroll
+    ToggleFrame.Parent = parent
     table.insert(ThemeFrames, ToggleFrame)
     local FrameCorner = Instance.new("UICorner") FrameCorner.CornerRadius = UDim.new(0, 6) FrameCorner.Parent = ToggleFrame
     applyThemeOutline(ToggleFrame, 1, false)
@@ -695,7 +701,7 @@ local function createExpandableToggle(textKey, parent, defaultState, mainCallbac
         if subType == "toggle" then
             local subState = false
             local SubFrame = Instance.new("Frame")
-            SubFrame.Size = UDim2.new(1, -8, 0, 35) -- Adjusted slightly to fix outline clipping
+            SubFrame.Size = UDim2.new(1, -8, 0, 35)
             SubFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
             SubFrame.Parent = ExpanderContainer
             table.insert(ThemeSubFrames, SubFrame)
@@ -747,7 +753,7 @@ local function createExpandableToggle(textKey, parent, defaultState, mainCallbac
             
         elseif subType == "input" then
             local SubRow = Instance.new("Frame")
-            SubRow.Size = UDim2.new(1, -8, 0, 35) -- Adjusted similarly for UI consistency 
+            SubRow.Size = UDim2.new(1, -8, 0, 35)
             SubRow.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
             SubRow.Parent = ExpanderContainer
             table.insert(ThemeSubFrames, SubRow)
@@ -799,7 +805,7 @@ local function createExpandableToggle(textKey, parent, defaultState, mainCallbac
 
         if expanded then
             ExpanderContainer.Visible = true
-            local targetHeight = ContainerList.AbsoluteContentSize.Y + 8 -- account for padding top+bottom
+            local targetHeight = ContainerList.AbsoluteContentSize.Y + 8
             TweenService:Create(ExpanderContainer, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = UDim2.new(1, 0, 0, targetHeight)}):Play()
         else
             local tw = TweenService:Create(ExpanderContainer, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = UDim2.new(1, 0, 0, 0)})
@@ -960,12 +966,10 @@ end
 ----------------------------------------------------
 local function setPolandMode(state)
     isPolandMode = state
-    
     if state then
         MainFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
         TitleBar.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
         TabBar.BackgroundColor3 = Color3.fromRGB(220, 220, 220)
-        ToggleBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
         TitleText.TextColor3 = Color3.fromRGB(20, 20, 20)
         FeaturesTabBtn.TextColor3 = currentTab == FeaturesScroll and Color3.fromRGB(255, 0, 0) or Color3.fromRGB(100, 100, 100)
         FunTabBtn.TextColor3 = currentTab == FunScroll and Color3.fromRGB(255, 0, 0) or Color3.fromRGB(100, 100, 100)
@@ -993,7 +997,6 @@ local function setPolandMode(state)
         MainFrame.BackgroundColor3 = Color3.fromRGB(22, 22, 28)
         TitleBar.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
         TabBar.BackgroundColor3 = Color3.fromRGB(26, 26, 34)
-        ToggleBtn.BackgroundColor3 = Color3.fromRGB(22, 22, 28)
         TitleText.TextColor3 = Color3.fromRGB(255, 255, 255)
         FeaturesTabBtn.TextColor3 = currentTab == FeaturesScroll and ThemeColor or Color3.fromRGB(150, 150, 150)
         FunTabBtn.TextColor3 = currentTab == FunScroll and ThemeColor or Color3.fromRGB(150, 150, 150)
@@ -1025,7 +1028,6 @@ end
 local function updateThemeColor(color)
     ThemeColor = color
     if isPolandMode then setPolandMode(false) end
-    
     for _, stroke in ipairs(OuterStrokes) do if stroke and stroke.Parent then TweenService:Create(stroke, TweenInfo.new(0.3), {Color = color}):Play() end end
     for _, stroke in ipairs(InnerStrokes) do if stroke and stroke.Parent then TweenService:Create(stroke, TweenInfo.new(0.3), {Color = color}):Play() end end
     for _, txt in ipairs(ThemeTexts) do if txt and txt.Parent and txt.Name ~= "TitleText" then TweenService:Create(txt, TweenInfo.new(0.3), {TextColor3 = color}):Play() end end
@@ -1166,11 +1168,8 @@ local function createColorPresetsRow(parent)
     
     InputBox.FocusLost:Connect(function()
         local r, g, b = InputBox.Text:match("(%d+)%s*,%s*(%d+)%s*,%s*(%d+)")
-        if r and g and b then
-            updateThemeColor(Color3.fromRGB(tonumber(r), tonumber(g), tonumber(b)))
-        else
-            ShowNotification(getTranslation("Wrong Format"))
-        end
+        if r and g and b then updateThemeColor(Color3.fromRGB(tonumber(r), tonumber(g), tonumber(b)))
+        else ShowNotification(getTranslation("Wrong Format")) end
     end)
     
     ExpandBtn.MouseButton1Click:Connect(function()
@@ -1190,30 +1189,30 @@ local function createColorPresetsRow(parent)
 end
 
 ----------------------------------------------------
--- PLAYER TELEPORT & SPECTATE WINDOW (V3.01)
+-- PLAYER MANAGER WINDOW (V3.1)
 ----------------------------------------------------
-local PlayerListWindow = Instance.new("Frame")
-PlayerListWindow.Name = "PlayerListWindow"
-PlayerListWindow.AnchorPoint = Vector2.new(0.5, 0.5)
-PlayerListWindow.Size = UDim2.new(0, 420, 0, 260) -- Increased height to fit larger avatar and buttons perfectly
-PlayerListWindow.Position = UDim2.new(0.5, 0, 0.5, 0)
-PlayerListWindow.BackgroundColor3 = Color3.fromRGB(22, 22, 28)
-PlayerListWindow.BackgroundTransparency = 0.15
-PlayerListWindow.Visible = false
-PlayerListWindow.Active = true
-PlayerListWindow.Parent = ScreenGui
+local PlayerManagerWindow = Instance.new("Frame")
+PlayerManagerWindow.Name = "PlayerManagerWindow"
+PlayerManagerWindow.AnchorPoint = Vector2.new(0.5, 0.5)
+PlayerManagerWindow.Size = UDim2.new(0, 420, 0, 260)
+PlayerManagerWindow.Position = UDim2.new(0.5, 0, 0.5, 0)
+PlayerManagerWindow.BackgroundColor3 = Color3.fromRGB(22, 22, 28)
+PlayerManagerWindow.BackgroundTransparency = 0.15
+PlayerManagerWindow.Visible = false
+PlayerManagerWindow.Active = true
+PlayerManagerWindow.Parent = ScreenGui
 
-local WinCorner = Instance.new("UICorner") WinCorner.CornerRadius = UDim.new(0, 10) WinCorner.Parent = PlayerListWindow
-applyThemeOutline(PlayerListWindow, 1.5, true)
+local WinCorner = Instance.new("UICorner") WinCorner.CornerRadius = UDim.new(0, 10) WinCorner.Parent = PlayerManagerWindow
+applyThemeOutline(PlayerManagerWindow, 1.5, true)
 
 local WinTitle = Instance.new("Frame")
 WinTitle.Size = UDim2.new(1, 0, 0, 35)
 WinTitle.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
 WinTitle.BackgroundTransparency = 0.15
 WinTitle.Active = true
-WinTitle.Parent = PlayerListWindow
+WinTitle.Parent = PlayerManagerWindow
 local WinTitleCorner = Instance.new("UICorner") WinTitleCorner.CornerRadius = UDim.new(0, 10) WinTitleCorner.Parent = WinTitle
-makeDraggable(PlayerListWindow, WinTitle)
+makeDraggable(PlayerManagerWindow, WinTitle)
 
 local WinTitleTxt = Instance.new("TextLabel")
 WinTitleTxt.Size = UDim2.new(1, -40, 1, 0)
@@ -1224,7 +1223,7 @@ WinTitleTxt.TextSize = 14
 WinTitleTxt.Font = Enum.Font.SourceSansBold
 WinTitleTxt.TextXAlignment = Enum.TextXAlignment.Left
 WinTitleTxt.Parent = WinTitle
-addTranslatable(WinTitleTxt, "Open Player List")
+addTranslatable(WinTitleTxt, "Player Manager")
 
 local WinClose = Instance.new("TextButton")
 WinClose.Size = UDim2.new(0, 25, 0, 25)
@@ -1235,13 +1234,13 @@ WinClose.TextColor3 = Color3.fromRGB(255, 80, 80)
 WinClose.TextSize = 14
 WinClose.Font = Enum.Font.SourceSansBold
 WinClose.Parent = WinTitle
-WinClose.MouseButton1Click:Connect(function() PlayerListWindow.Visible = false end)
+WinClose.MouseButton1Click:Connect(function() PlayerManagerWindow.Visible = false end)
 
 local WinLeft = Instance.new("Frame")
 WinLeft.Size = UDim2.new(0.5, -5, 1, -45)
 WinLeft.Position = UDim2.new(0, 5, 0, 40)
 WinLeft.BackgroundTransparency = 1
-WinLeft.Parent = PlayerListWindow
+WinLeft.Parent = PlayerManagerWindow
 
 local WinSearch = Instance.new("TextBox")
 WinSearch.Size = UDim2.new(1, 0, 0, 26)
@@ -1273,12 +1272,12 @@ WinRight.Size = UDim2.new(0.5, -10, 1, -45)
 WinRight.Position = UDim2.new(0.5, 5, 0, 40)
 WinRight.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
 WinRight.BackgroundTransparency = 0.3
-WinRight.Parent = PlayerListWindow
+WinRight.Parent = PlayerManagerWindow
 local WRCorner = Instance.new("UICorner") WRCorner.CornerRadius = UDim.new(0, 6) WRCorner.Parent = WinRight
 applyThemeOutline(WinRight, 1, false)
 
 local WinAvatar = Instance.new("ImageLabel")
-WinAvatar.Size = UDim2.new(0, 80, 0, 80) -- Increased Avatar Size
+WinAvatar.Size = UDim2.new(0, 80, 0, 80)
 WinAvatar.Position = UDim2.new(0.5, -40, 0, 15)
 WinAvatar.BackgroundTransparency = 1
 WinAvatar.Image = ""
@@ -1287,7 +1286,7 @@ local WAvCorner = Instance.new("UICorner") WAvCorner.CornerRadius = UDim.new(1, 
 
 local WinName = Instance.new("TextLabel")
 WinName.Size = UDim2.new(1, -10, 0, 20)
-WinName.Position = UDim2.new(0, 5, 0, 100) -- Offset adjusted to fit the larger avatar
+WinName.Position = UDim2.new(0, 5, 0, 100) 
 WinName.BackgroundTransparency = 1
 WinName.TextColor3 = Color3.fromRGB(240, 240, 240)
 WinName.TextSize = 13
@@ -1334,6 +1333,25 @@ addTranslatable(WinBtnCopy, "Copy Username")
 
 local selectedWinPlayer = nil
 local isSpectating = false
+local selectedPlayerConn = nil
+
+local managerHighlight = Instance.new("Highlight")
+managerHighlight.Name = "eynzManagerHighlight"
+managerHighlight.FillColor = ThemeColor
+managerHighlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+managerHighlight.FillTransparency = 0.4
+managerHighlight.OutlineTransparency = 0
+table.insert(ThemeUpdaters, function(color) managerHighlight.FillColor = color end)
+
+local function applyManagerESP()
+    if selectedWinPlayer and selectedWinPlayer.Character then
+        managerHighlight.Adornee = selectedWinPlayer.Character
+        managerHighlight.Parent = selectedWinPlayer.Character
+    else
+        managerHighlight.Adornee = nil
+        managerHighlight.Parent = nil
+    end
+end
 
 local function refreshWinDisplay()
     if selectedWinPlayer and selectedWinPlayer.Parent then
@@ -1348,6 +1366,15 @@ local function refreshWinDisplay()
         isSpectating = false
         workspace.CurrentCamera.CameraSubject = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid")
         WinBtnSpec.Text = getTranslation("Spectate")
+    end
+    
+    applyManagerESP()
+    if selectedPlayerConn then selectedPlayerConn:Disconnect() end
+    if selectedWinPlayer then
+        selectedPlayerConn = selectedWinPlayer.CharacterAdded:Connect(function(char)
+            task.wait(0.2)
+            applyManagerESP()
+        end)
     end
 end
 
@@ -1382,10 +1409,10 @@ local function populateWinList()
 end
 
 WinSearch:GetPropertyChangedSignal("Text"):Connect(populateWinList)
-table.insert(ActiveConnections, Players.PlayerAdded:Connect(function(p) if PlayerListWindow.Visible then populateWinList() end end))
+table.insert(ActiveConnections, Players.PlayerAdded:Connect(function(p) if PlayerManagerWindow.Visible then populateWinList() end end))
 table.insert(ActiveConnections, Players.PlayerRemoving:Connect(function(p)
     if selectedWinPlayer == p then selectedWinPlayer = nil refreshWinDisplay() end
-    if PlayerListWindow.Visible then populateWinList() end
+    if PlayerManagerWindow.Visible then populateWinList() end
 end))
 
 WinBtnTP.MouseButton1Click:Connect(function()
@@ -1428,7 +1455,7 @@ table.insert(TranslationUpdaters, function()
 end)
 
 ----------------------------------------------------
--- PROMPT BUTTON GUI ("E")
+-- PROMPT BUTTON GUI ("E") - Camera Distance & Hold
 ----------------------------------------------------
 local PromptBtnGui = Instance.new("ScreenGui")
 PromptBtnGui.Name = "eynzPromptButton"
@@ -1457,36 +1484,18 @@ table.insert(ThemeTexts, PromptBtnLabel)
 
 local pbDragging = false
 local pbDragStart, pbStartPos
-PromptBtnFrame.InputBegan:Connect(function(input)
-    if not PromptBtnFrame:GetAttribute("Locked") and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
-        pbDragging = true
-        pbDragStart = input.Position
-        pbStartPos = PromptBtnFrame.Position
-        local inputEndedConn
-        inputEndedConn = input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then
-                pbDragging = false
-                inputEndedConn:Disconnect()
-            end
-        end)
-    end
-end)
-table.insert(ActiveConnections, UserInputService.InputChanged:Connect(function(input)
-    if pbDragging and not PromptBtnFrame:GetAttribute("Locked") and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-        local delta = input.Position - pbDragStart
-        PromptBtnFrame.Position = UDim2.new(pbStartPos.X.Scale, pbStartPos.X.Offset + delta.X, pbStartPos.Y.Scale, pbStartPos.Y.Offset + delta.Y)
-    end
-end))
+local currentHeldPrompt = nil
 
-local function fireNearestPrompt(reach)
-    if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then return end
-    local root = LocalPlayer.Character.HumanoidRootPart
+local function getClosestPromptToCamera(reach)
+    local cam = workspace.CurrentCamera
+    if not cam then return nil end
+    local camPos = cam.CFrame.Position
     local closestPrompt, closestDist = nil, reach
     for _, prompt in pairs(workspace:GetDescendants()) do
         if prompt:IsA("ProximityPrompt") and prompt.Enabled then
             local part = prompt.Parent
             if part and part:IsA("BasePart") then
-                local dist = (root.Position - part.Position).Magnitude
+                local dist = (camPos - part.Position).Magnitude
                 if dist <= closestDist then
                     closestDist = dist
                     closestPrompt = prompt
@@ -1494,20 +1503,48 @@ local function fireNearestPrompt(reach)
             end
         end
     end
-    if closestPrompt then
-        pcall(function() fireproximityprompt(closestPrompt) end)
-    end
+    return closestPrompt
 end
 
-PromptBtnFrame.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        -- To avoid firing if dragging
-        if not pbDragging then
-            local reach = PromptBtnFrame:GetAttribute("Reach") or 10
-            fireNearestPrompt(reach)
+PromptBtnFrame.InputBegan:Connect(function(input)
+    if not PromptBtnFrame:GetAttribute("Locked") and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
+        pbDragging = false
+        pbDragStart = input.Position
+        pbStartPos = PromptBtnFrame.Position
+
+        local reach = PromptBtnFrame:GetAttribute("Reach") or 10
+        currentHeldPrompt = getClosestPromptToCamera(reach)
+        if currentHeldPrompt then
+            pcall(function() currentHeldPrompt:InputHoldBegin() end)
         end
     end
 end)
+
+PromptBtnFrame.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        if currentHeldPrompt then
+            pcall(function() currentHeldPrompt:InputHoldEnd() end)
+            currentHeldPrompt = nil
+        end
+        pbDragStart = nil
+    end
+end)
+
+table.insert(ActiveConnections, UserInputService.InputChanged:Connect(function(input)
+    if not PromptBtnFrame:GetAttribute("Locked") and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        if pbDragStart and input.UserInputState ~= Enum.UserInputState.End then
+            local delta = input.Position - pbDragStart
+            if delta.Magnitude > 4 then
+                pbDragging = true
+                PromptBtnFrame.Position = UDim2.new(pbStartPos.X.Scale, pbStartPos.X.Offset + delta.X, pbStartPos.Y.Scale, pbStartPos.Y.Offset + delta.Y)
+                if currentHeldPrompt then
+                    pcall(function() currentHeldPrompt:InputHoldEnd() end)
+                    currentHeldPrompt = nil
+                end
+            end
+        end
+    end
+end))
 
 ----------------------------------------------------
 -- ABOUT & DETAILS CARD
@@ -1538,7 +1575,7 @@ local function createAboutCard(parent)
     Lbl2.Size = UDim2.new(1, -20, 0, 20)
     Lbl2.Position = UDim2.new(0, 10, 0, 25)
     Lbl2.BackgroundTransparency = 1
-    Lbl2.Text = "Version 3.01"
+    Lbl2.Text = "Version 3.1"
     Lbl2.TextColor3 = Color3.fromRGB(200, 200, 200)
     Lbl2.Font = Enum.Font.SourceSansSemibold
     Lbl2.TextSize = 14
@@ -1700,12 +1737,11 @@ table.insert(ActiveConnections, RunService.Stepped:Connect(function()
     end
 end))
 
-createButton("Open Player List", FeaturesScroll, function()
-    PlayerListWindow.Visible = true
+createButton("Open Player Manager", FeaturesScroll, function()
+    PlayerManagerWindow.Visible = true
     populateWinList()
 end)
 
--- INSTANT PROMPT & PROMPT BUTTON
 local instantPromptEnabled = false
 local promptReachValue = 10
 
@@ -1756,6 +1792,72 @@ table.insert(ActiveConnections, workspace.DescendantAdded:Connect(function(obj)
 end))
 
 ----------------------------------------------------
+-- FUN TAB (3D Coin Toss)
+----------------------------------------------------
+createSection("3D Coin Toss", FunScroll)
+
+local CoinContainer = Instance.new("Frame")
+CoinContainer.Size = UDim2.new(1, 0, 0, 160)
+CoinContainer.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+CoinContainer.Parent = FunScroll
+table.insert(ThemeFrames, CoinContainer)
+applyThemeOutline(CoinContainer, 1, false)
+local CoinCorner = Instance.new("UICorner") CoinCorner.CornerRadius = UDim.new(0, 6) CoinCorner.Parent = CoinContainer
+
+local CoinViewport = Instance.new("ViewportFrame")
+CoinViewport.Size = UDim2.new(1, 0, 0, 100)
+CoinViewport.Position = UDim2.new(0, 0, 0, 5)
+CoinViewport.BackgroundTransparency = 1
+CoinViewport.Parent = CoinContainer
+
+local CoinCam = Instance.new("Camera")
+CoinCam.CFrame = CFrame.new(Vector3.new(0, 0, 4), Vector3.new(0, 0, 0))
+CoinViewport.CurrentCamera = CoinCam
+
+local CoinPart = Instance.new("Part")
+CoinPart.Shape = Enum.PartType.Cylinder
+CoinPart.Size = Vector3.new(0.2, 1.8, 1.8)
+CoinPart.Color = Color3.fromRGB(255, 215, 0)
+CoinPart.Material = Enum.Material.Metal
+CoinPart.CFrame = CFrame.Angles(0, math.rad(90), 0)
+CoinPart.Parent = CoinViewport
+
+local CoinResult = Instance.new("TextLabel")
+CoinResult.Size = UDim2.new(1, 0, 0, 20)
+CoinResult.Position = UDim2.new(0, 0, 0, 100)
+CoinResult.BackgroundTransparency = 1
+CoinResult.Text = ""
+CoinResult.TextColor3 = Color3.fromRGB(255, 255, 255)
+CoinResult.Font = Enum.Font.SourceSansBold
+CoinResult.TextSize = 16
+CoinResult.Parent = CoinContainer
+registerDynamicText(CoinResult)
+
+local isTossing = false
+createButton("Toss Coin", FunScroll, function()
+    if isTossing then return end
+    isTossing = true
+    CoinResult.Text = getTranslation("Flipping...")
+    
+    local isHeads = math.random(1, 2) == 1
+    local spinTime = 1.5
+    local startTime = tick()
+    local conn
+    conn = RunService.RenderStepped:Connect(function()
+        local t = tick() - startTime
+        if t >= spinTime then
+            conn:Disconnect()
+            isTossing = false
+            CoinResult.Text = isHeads and getTranslation("Heads!") or getTranslation("Tails!")
+            CoinPart.CFrame = CFrame.Angles(math.rad(isHeads and 0 or 180), math.rad(90), 0)
+        else
+            CoinPart.CFrame = CFrame.Angles(t * math.pi * 8, math.rad(90), 0)
+        end
+    end)
+    table.insert(ActiveConnections, conn)
+end)
+
+----------------------------------------------------
 -- VISUALS / ESP
 ----------------------------------------------------
 createSection("Visuals / ESP", FeaturesScroll)
@@ -1794,7 +1896,6 @@ local function createNameTag(nameText, color)
     return bg
 end 
 
--- ESP SYSTEMS
 local playerEspEnabled, playerNamesEnabled = false, false
 local npcEspEnabled, npcNamesEnabled = false, false
 local interactableEspEnabled, interactableNamesEnabled = false, false
@@ -2046,6 +2147,8 @@ local function DestroyHub()
     if isSpectating then
         workspace.CurrentCamera.CameraSubject = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid")
     end
+    
+    if managerHighlight then managerHighlight:Destroy() end
 
     for _, connection in ipairs(ActiveConnections) do if connection and connection.Disconnect then connection:Disconnect() end end
     if ScreenGui then ScreenGui:Destroy() end
